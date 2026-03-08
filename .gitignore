@@ -1,3 +1,27 @@
+## SYSTEM
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+Icon?
+._*
+
+# Thumbnails
+.Spotlight-V100
+.Trashes
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux temporary files
+*~
+.nfs
+
+## NODE
 # Logs
 logs
 *.log
