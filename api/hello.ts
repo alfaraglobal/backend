@@ -1,15 +1,12 @@
-import { checkOrigin, corsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 
-export default {
-  fetch(request: Request) {
-    const preflight = handlePreflight(request);
-    if (preflight) return preflight;
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = checkOrigin(req);
+  if (!origin) return forbidden(res);
 
-    const origin = checkOrigin(request);
-    if (!origin) return forbidden();
+  if (handlePreflight(req, res, origin)) return;
 
-    return new Response('Hello from Vercel!', {
-      headers: corsHeaders(origin),
-    });
-  }
+  setCorsHeaders(res, origin);
+  res.status(200).send('Hello from Vercel!');
 }

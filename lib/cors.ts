@@ -1,3 +1,5 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 const PRODUCTION_ORIGINS = ['https://alfaraglobal.com'];
 
 function getAllowedOrigins(): string[] {
@@ -6,28 +8,25 @@ function getAllowedOrigins(): string[] {
   return [...PRODUCTION_ORIGINS, ...extras];
 }
 
-export function checkOrigin(request: Request): string | null {
-  const origin = request.headers.get('origin');
-  if (!origin) return null;
-  const allowed = getAllowedOrigins();
-  return allowed.includes(origin) ? origin : null;
+export function checkOrigin(req: VercelRequest): string | null {
+  const origin = req.headers['origin'];
+  if (!origin || Array.isArray(origin)) return null;
+  return getAllowedOrigins().includes(origin) ? origin : null;
 }
 
-export function corsHeaders(origin: string): Record<string, string> {
-  return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+export function setCorsHeaders(res: VercelResponse, origin: string): void {
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-export function forbidden(): Response {
-  return new Response('Forbidden', { status: 403 });
+export function forbidden(res: VercelResponse): void {
+  res.status(403).end('Forbidden');
 }
 
-export function handlePreflight(request: Request): Response | null {
-  if (request.method !== 'OPTIONS') return null;
-  const origin = checkOrigin(request);
-  if (!origin) return forbidden();
-  return new Response(null, { status: 204, headers: corsHeaders(origin) });
+export function handlePreflight(req: VercelRequest, res: VercelResponse, origin: string): boolean {
+  if (req.method !== 'OPTIONS') return false;
+  setCorsHeaders(res, origin);
+  res.status(204).end();
+  return true;
 }
