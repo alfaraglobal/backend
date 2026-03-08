@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for AG website",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alfaraglobal/backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/alfaraglobal/backend/issues"
+  },
+  "homepage": "https://github.com/alfaraglobal/backend#readme",
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "@vercel/edge": "^1.2.2",
+    "typescript": "^5.9.3"
+  }
+}
