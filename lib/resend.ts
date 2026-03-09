@@ -15,7 +15,7 @@ const TEMPLATE_ID: Record<Lang, string> = {
 };
 
 export async function sendConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
-  const confirmUrl = `${API_URL}/api/confirm?token=${token}`;
+  const confirmUrl = `${API_URL}/api/confirm?token=${token}&lang=${lang}`;
 
   await resendSend.emails.send({
     to: email,

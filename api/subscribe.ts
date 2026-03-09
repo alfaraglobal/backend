@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
   const token = randomUUID();
-  await redis.set(`nl:pending:${token}`, JSON.stringify({ email, lang }), { ex: TOKEN_TTL_SECONDS });
+  await redis.set(`nl:pending:${token}`, email, { ex: TOKEN_TTL_SECONDS });
 
   await sendConfirmationEmail(email, lang, token);
 
