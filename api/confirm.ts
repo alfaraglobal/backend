@@ -11,17 +11,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fallbackPrefix = fallbackLang === 'en' ? '' : `/${fallbackLang}`;
 
   if (typeof token !== 'string') {
-    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/expired`);
+    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-newsletter`);
   }
 
   const email = await redis.get<string>(`nl:pending:${token}`);
 
   if (!email) {
-    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/expired`);
+    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-newsletter`);
   }
 
   await addContact(email);
   await redis.del(`nl:pending:${token}`);
 
-  return res.redirect(302, `${SITE_URL}${fallbackPrefix}/confirmed`);
+  return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=subscribed`);
 }
