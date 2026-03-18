@@ -14,6 +14,13 @@ export const newsletterLimiter = new Ratelimit({
   prefix: 'rl:newsletter',
 });
 
+// 3 requests per IP per 10 minutes
+export const landlordLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '10 m'),
+  prefix: 'rl:landlord',
+});
+
 export async function checkRateLimit(
   limiter: Ratelimit,
   req: VercelRequest,

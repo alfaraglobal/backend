@@ -7,6 +7,9 @@ import { sendConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
+
+export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = checkOrigin(req);
@@ -28,15 +31,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const email = raw.trim().toLowerCase();
 
-  if (!isEmail(email)) {
+  if (email.length > 254 || !isEmail(email)) {
     return res.status(400).json({ error: 'Invalid email' });
   }
+
+  const onCooldown = await redis.get(`nl:cooldown:${email}`);
+  if (onCooldown) return res.status(200).json({ ok: true });
 
   const rawLang = req.body?.lang;
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
   const token = randomUUID();
   await redis.set(`nl:pending:${token}`, email, { ex: TOKEN_TTL_SECONDS });
+  await redis.set(`nl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
   await sendConfirmationEmail(email, lang, token);
 
