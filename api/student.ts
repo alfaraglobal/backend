@@ -138,6 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     location_preference: b.location_preference as string,
     budget,
     newsletter: b.newsletter === true,
+    lang: (VALID_LANGS.includes(req.body?.lang) ? req.body.lang : 'en') as Lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
     ...(b.phone ? { phone: b.phone as string } : {}),
     ...(b.home_vibe ? { home_vibe: b.home_vibe as string } : {}),

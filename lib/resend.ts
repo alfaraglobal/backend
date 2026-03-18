@@ -8,6 +8,7 @@ export interface LandlordPayload {
   location: string;
   international_students: boolean;
   rental_type: string[];
+  lang: string;
   middle_name?: string;
   phone?: string;
   comments?: string;
@@ -52,9 +53,9 @@ const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 const RENTAL_TYPE_LABELS: Record<string, string> = {
-  rooms: 'Individual rooms',
-  whole: 'Whole flat or house',
-  room_in_home: 'A room in your home',
+  individual_rooms: 'Individual rooms',
+  whole_house: 'Whole flat or house',
+  room_in_your_home: 'A room in your home',
 };
 
 export async function sendLandlordConfirmationEmail(email: string, lang: Lang, token: string, payload: LandlordPayload): Promise<void> {
@@ -96,6 +97,7 @@ export interface StudentPayload {
   location_preference: string;
   budget: number;
   newsletter: boolean;
+  lang: string;
   middle_name?: string;
   phone?: string;
   home_vibe?: string;

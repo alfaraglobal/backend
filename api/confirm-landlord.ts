@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from '../lib/ratelimit';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
 import type { LandlordPayload } from '../lib/resend';
+import { appendLandlordRow } from '../lib/sheets';
 
 const COOLDOWN_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 
@@ -22,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-form-landlord`);
   }
 
-  // TODO: store landlord record
+  await appendLandlordRow(token, payload);
 
   await redis.del(`ll:pending:${token}`);
   await redis.set(`ll:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });

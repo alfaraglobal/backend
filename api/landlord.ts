@@ -11,7 +11,7 @@ export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
 const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
 
-const VALID_RENTAL_TYPES = new Set(['rooms', 'whole', 'room_in_home']);
+const VALID_RENTAL_TYPES = new Set(['individual_rooms', 'whole_house', 'room_in_your_home']);
 
 const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, location: 100, comments: 2000 };
 
@@ -78,6 +78,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // — Cleaning —
 
+  const rawLang = req.body?.lang;
+  const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
+
   const payload = {
     name: b.name.trim(),
     surname: b.surname.trim(),
@@ -85,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     location: b.location.trim(),
     international_students: b.international_students as boolean,
     rental_type: b.rental_type as string[],
+    lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
     ...(b.phone ? { phone: b.phone as string } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
@@ -92,9 +96,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const onCooldown = await redis.get(`ll:cooldown:${email}`);
   if (onCooldown) return res.status(200).json({ ok: true });
-
-  const rawLang = req.body?.lang;
-  const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
   const token = randomUUID();
   await redis.set(`ll:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
