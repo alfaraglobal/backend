@@ -26,6 +26,44 @@ async function appendRow(spreadsheetId: string, token: string, values: (string |
   }
 }
 
+export async function appendStudentRow(token: string, payload: {
+  lang: string;
+  name: string;
+  middle_name?: string;
+  surname: string;
+  email: string;
+  phone?: string;
+  nationality: string;
+  arrival_date: string;
+  departure_date: string;
+  accommodation_type: string;
+  location_preference: string;
+  budget: number;
+  home_vibe?: string;
+  daily_rhythm?: string;
+  comments?: string;
+  newsletter: boolean;
+}): Promise<void> {
+  await appendRow(process.env.GOOGLE_SHEETS_ID_STUDENT!, token, [
+    payload.lang,
+    payload.name,
+    payload.middle_name ?? '',
+    payload.surname,
+    payload.email,
+    payload.phone ?? '',
+    payload.nationality,
+    payload.arrival_date,
+    payload.departure_date,
+    payload.accommodation_type,
+    payload.location_preference,
+    payload.budget,
+    payload.home_vibe ?? '',
+    payload.daily_rhythm ?? '',
+    payload.comments ?? '',
+    payload.newsletter ? 'Yes' : 'No',
+  ]);
+}
+
 export async function appendLandlordRow(token: string, payload: {
   lang: string;
   name: string;

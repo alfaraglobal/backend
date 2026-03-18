@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from '../lib/ratelimit';
 import { addContact } from '../lib/resend';
+import { appendStudentRow } from '../lib/sheets';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
 import type { StudentPayload } from '../lib/resend';
 
@@ -30,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await addContact(payload.email);
   }
 
-  // TODO: store student record
+  await appendStudentRow(token, payload);
 
   await redis.del(`sl:pending:${token}`);
   await redis.set(`sl:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });

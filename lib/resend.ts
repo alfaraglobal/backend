@@ -123,19 +123,19 @@ const STUDENT_NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 const ACCOMMODATION_TYPE_LABELS: Record<string, string> = {
-  room_shared: 'Room in a shared flat',
+  room_in_shared_flat: 'Room in a shared flat',
   entire_apartment: 'Entire apartment',
   co_living: 'Co-living',
   student_residence: 'Student residence',
-  no_preference: 'Doesn\'t matter, I trust you',
+  i_trust_you: 'Doesn\'t matter, I trust you',
 };
 
 const LOCATION_PREFERENCE_LABELS: Record<string, string> = {
   university: 'Next to the University',
   metro: 'Close to the Metro station',
   center: 'Center',
-  green: 'Near green areas',
-  no_preference: 'Doesn\'t matter, I trust you',
+  green_area: 'Near green areas',
+  i_trust_you: 'Doesn\'t matter, I trust you',
 };
 
 const HOME_VIBE_LABELS: Record<string, string> = {

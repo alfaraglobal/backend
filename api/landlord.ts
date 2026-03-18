@@ -46,8 +46,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof b.phone !== 'string' || b.phone.length > MAX.phone) {
       errors.phone = 'invalidPhone';
     } else {
-      const digits = b.phone.replace(/\D/g, '');
-      if (!/^[+\d\-().]+$/.test(b.phone) || digits.length < 7 || digits.length > 15)
+      const normalized = b.phone.replace(/\s/g, '');
+      const digits = normalized.replace(/\D/g, '');
+      if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
         errors.phone = 'invalidPhone';
     }
   }

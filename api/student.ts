@@ -11,8 +11,8 @@ export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
 const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
 
-const VALID_ACCOMMODATION_TYPES = new Set(['room_shared', 'entire_apartment', 'co_living', 'student_residence', 'no_preference']);
-const VALID_LOCATION_PREFERENCES = new Set(['university', 'metro', 'center', 'green', 'no_preference']);
+const VALID_ACCOMMODATION_TYPES = new Set(['room_in_shared_flat', 'entire_apartment', 'co_living', 'student_residence', 'i_trust_you']);
+const VALID_LOCATION_PREFERENCES = new Set(['university', 'metro', 'center', 'green_area', 'i_trust_you']);
 const VALID_HOME_VIBES = new Set(['quiet', 'social', 'between']);
 const VALID_DAILY_RHYTHMS = new Set(['early_bird', 'night_owl', 'flexible']);
 
@@ -69,8 +69,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof b.phone !== 'string' || b.phone.length > MAX.phone) {
       errors.phone = 'invalidPhone';
     } else {
-      const digits = b.phone.replace(/\D/g, '');
-      if (!/^[+\d\-().]+$/.test(b.phone) || digits.length < 7 || digits.length > 15)
+      const normalized = b.phone.replace(/\s/g, '');
+      const digits = normalized.replace(/\D/g, '');
+      if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
         errors.phone = 'invalidPhone';
     }
   }
