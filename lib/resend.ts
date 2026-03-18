@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { API_URL, type Lang } from './config';
+import { API_URL, SITE_URL, type Lang } from './config';
 
 export interface LandlordPayload {
   name: string;
@@ -29,7 +29,7 @@ const TEMPLATE_ID: Record<Lang, string> = {
 export async function sendConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
   const confirmUrl = `${API_URL}/api/confirm?token=${token}&lang=${lang}`;
 
-  await resendSend.emails.send({
+  const { error } = await resendSend.emails.send({
     to: email,
     template: {
       id: TEMPLATE_ID[lang],
@@ -38,6 +38,7 @@ export async function sendConfirmationEmail(email: string, lang: Lang, token: st
       },
     },
   });
+  if (error) console.error('[resend] sendConfirmationEmail failed:', error);
 }
 
 const LANDLORD_TPL_ID = process.env.RESEND_LANDLORD_TPL_ID!;
@@ -52,22 +53,24 @@ const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
 
 const RENTAL_TYPE_LABELS: Record<string, string> = {
   rooms: 'Individual rooms',
-  whole: 'Whole property',
-  room_in_home: 'Room in home',
+  whole: 'Whole flat or house',
+  room_in_home: 'A room in your home',
 };
 
 export async function sendLandlordConfirmationEmail(email: string, lang: Lang, token: string, payload: LandlordPayload): Promise<void> {
   const confirmUrl = `${API_URL}/api/confirm-landlord?token=${token}&lang=${lang}`;
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
   const rentalType = payload.rental_type.map(t => RENTAL_TYPE_LABELS[t] ?? t).join(', ');
 
-  await resendSend.emails.send({
+  const { error } = await resendSend.emails.send({
     to: email,
     template: {
       id: LANDLORD_TEMPLATE_ID[lang],
       variables: {
         CONFIRM_URL: confirmUrl,
+        FORM_URL: `${SITE_URL}${langPrefix}/housing/landlord#landlord-form-intro`,
         NAME: payload.name,
         FULL_NAME: fullName,
         EMAIL_ADDRESS: payload.email,
@@ -79,6 +82,102 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
       },
     },
   });
+  if (error) console.error('[resend] sendLandlordConfirmationEmail failed:', error);
+}
+
+export interface StudentPayload {
+  name: string;
+  surname: string;
+  email: string;
+  nationality: string;
+  arrival_date: string;
+  departure_date: string;
+  accommodation_type: string;
+  location_preference: string;
+  budget: number;
+  newsletter: boolean;
+  middle_name?: string;
+  phone?: string;
+  home_vibe?: string;
+  daily_rhythm?: string;
+  comments?: string;
+}
+
+const STUDENT_TPL_ID = process.env.RESEND_STUDENT_TPL_ID!;
+const STUDENT_NEWSLETTER_TPL_ID = process.env.RESEND_STUDENT_NEWSLETTER_TPL_ID!;
+
+const STUDENT_TEMPLATE_ID: Record<Lang, string> = {
+  en: STUDENT_TPL_ID,
+  es: STUDENT_TPL_ID,
+  fr: STUDENT_TPL_ID,
+  cat: STUDENT_TPL_ID,
+};
+
+const STUDENT_NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
+  en: STUDENT_NEWSLETTER_TPL_ID,
+  es: STUDENT_NEWSLETTER_TPL_ID,
+  fr: STUDENT_NEWSLETTER_TPL_ID,
+  cat: STUDENT_NEWSLETTER_TPL_ID,
+};
+
+const ACCOMMODATION_TYPE_LABELS: Record<string, string> = {
+  room_shared: 'Room in a shared flat',
+  entire_apartment: 'Entire apartment',
+  co_living: 'Co-living',
+  student_residence: 'Student residence',
+  no_preference: 'Doesn\'t matter, I trust you',
+};
+
+const LOCATION_PREFERENCE_LABELS: Record<string, string> = {
+  university: 'Next to the University',
+  metro: 'Close to the Metro station',
+  center: 'Center',
+  green: 'Near green areas',
+  no_preference: 'Doesn\'t matter, I trust you',
+};
+
+const HOME_VIBE_LABELS: Record<string, string> = {
+  quiet: 'Quiet and tidy',
+  social: 'Social and lively',
+  between: 'Somewhere in between',
+};
+
+const DAILY_RHYTHM_LABELS: Record<string, string> = {
+  early_bird: 'Early bird',
+  night_owl: 'Night owl',
+  flexible: 'Flexible',
+};
+
+export async function sendStudentConfirmationEmail(email: string, lang: Lang, token: string, payload: StudentPayload, newsletter: boolean): Promise<void> {
+  const confirmUrl = `${API_URL}/api/confirm-student?token=${token}&lang=${lang}${newsletter ? '&newsletter=1' : ''}`;
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+
+  const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
+
+  const { error } = await resendSend.emails.send({
+    to: email,
+    template: {
+      id: newsletter ? STUDENT_NEWSLETTER_TEMPLATE_ID[lang] : STUDENT_TEMPLATE_ID[lang],
+      variables: {
+        CONFIRM_URL: confirmUrl,
+        FORM_URL: newsletter ? `${SITE_URL}${langPrefix}/housing/student?newsletter=1#student-form-intro` : `${SITE_URL}${langPrefix}/housing/student#student-form-intro`,
+        NAME: payload.name,
+        FULL_NAME: fullName,
+        EMAIL_ADDRESS: payload.email,
+        NATIONALITY: payload.nationality,
+        ARRIVAL_DATE: payload.arrival_date,
+        DEPARTURE_DATE: payload.departure_date,
+        ACCOMMODATION_TYPE: ACCOMMODATION_TYPE_LABELS[payload.accommodation_type] ?? payload.accommodation_type,
+        LOCATION_PREFERENCE: LOCATION_PREFERENCE_LABELS[payload.location_preference] ?? payload.location_preference,
+        BUDGET: `€${payload.budget}`,
+        ...(payload.phone ? { PHONE: payload.phone } : {}),
+        ...(payload.home_vibe ? { HOME_VIBE: HOME_VIBE_LABELS[payload.home_vibe] ?? payload.home_vibe } : {}),
+        ...(payload.daily_rhythm ? { DAILY_RHYTHM: DAILY_RHYTHM_LABELS[payload.daily_rhythm] ?? payload.daily_rhythm } : {}),
+        ...(payload.comments ? { COMMENTS: payload.comments } : {}),
+      },
+    },
+  });
+  if (error) console.error('[resend] sendStudentConfirmationEmail failed:', error);
 }
 
 export async function addContact(email: string): Promise<void> {
