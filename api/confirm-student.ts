@@ -28,7 +28,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (payload.newsletter) {
-    await addContact(payload.email);
+    const firstName = [payload.name, payload.middle_name].filter(Boolean).join(' ');
+    await addContact({ email: payload.email, lang: payload.lang, firstName, lastName: payload.surname });
   }
 
   await appendStudentRow(token, payload);

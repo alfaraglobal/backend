@@ -14,14 +14,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-newsletter`);
   }
 
-  const email = await redis.get<string>(`nl:pending:${token}`);
+  const pending = await redis.get<{ email: string; lang: Lang }>(`nl:pending:${token}`);
 
-  if (!email) {
+  if (!pending) {
     return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-newsletter`);
   }
 
-  await addContact(email);
+  const { email, lang } = pending;
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+
+  await addContact({ email, lang });
   await redis.del(`nl:pending:${token}`);
 
-  return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=subscribed`);
+  return res.redirect(302, `${SITE_URL}${langPrefix}/status?type=subscribed`);
 }

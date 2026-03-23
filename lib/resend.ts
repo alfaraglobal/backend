@@ -8,7 +8,7 @@ export interface LandlordPayload {
   location: string;
   international_students: boolean;
   rental_type: string[];
-  lang: string;
+  lang: Lang;
   middle_name?: string;
   phone?: string;
   comments?: string;
@@ -97,7 +97,7 @@ export interface StudentPayload {
   location_preference: string;
   budget: number;
   newsletter: boolean;
-  lang: string;
+  lang: Lang;
   middle_name?: string;
   phone?: string;
   home_vibe?: string;
@@ -182,9 +182,29 @@ export async function sendStudentConfirmationEmail(email: string, lang: Lang, to
   if (error) console.error('[resend] sendStudentConfirmationEmail failed:', error);
 }
 
-export async function addContact(email: string): Promise<void> {
-  await resendAdmin.contacts.create({
+const SEGMENT_ID: Record<Lang, string | undefined> = {
+  en: process.env.RESEND_SEGMENT_EN_ID,
+  fr: process.env.RESEND_SEGMENT_FR_ID,
+  es: process.env.RESEND_SEGMENT_ES_ID,
+  cat: process.env.RESEND_SEGMENT_ES_ID,
+};
+
+interface AddContactOptions {
+  email: string;
+  lang: Lang;
+  firstName?: string;
+  lastName?: string;
+}
+
+export async function addContact({ email, lang, firstName, lastName }: AddContactOptions): Promise<void> {
+  const segmentId = SEGMENT_ID[lang] ?? SEGMENT_ID['en'];
+
+  const { error } = await resendAdmin.contacts.create({
     email,
     unsubscribed: false,
+    ...(firstName ? { firstName } : {}),
+    ...(lastName ? { lastName } : {}),
+    ...(segmentId ? { segments: [{ id: segmentId }] } : {}),
   });
+  if (error) console.error('[resend] addContact failed:', error);
 }
