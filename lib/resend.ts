@@ -17,29 +17,29 @@ export interface LandlordPayload {
 const resendSend  = new Resend(process.env.RESEND_SEND_KEY!);
 const resendAdmin = new Resend(process.env.RESEND_KEY!);
 
-const CONFIRMATION_TPL_ID = process.env.RESEND_CONFIRMATION_TPL_ID!;
+const NEWSLETTER_TPL_ID = process.env.RESEND_NEWSLETTER_TPL_ID!;
 
 // When additional language templates are created, map them here
-const TEMPLATE_ID: Record<Lang, string> = {
-  en:  CONFIRMATION_TPL_ID,
-  es:  CONFIRMATION_TPL_ID,
-  fr:  CONFIRMATION_TPL_ID,
-  cat: CONFIRMATION_TPL_ID,
+const NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
+  en:  NEWSLETTER_TPL_ID,
+  es:  NEWSLETTER_TPL_ID,
+  fr:  NEWSLETTER_TPL_ID,
+  cat: NEWSLETTER_TPL_ID,
 };
 
-export async function sendConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
+export async function sendNewsletterConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
   const confirmUrl = `${API_URL}/api/confirm?token=${token}&lang=${lang}`;
 
   const { error } = await resendSend.emails.send({
     to: email,
     template: {
-      id: TEMPLATE_ID[lang],
+      id: NEWSLETTER_TEMPLATE_ID[lang],
       variables: {
         CONFIRM_URL: confirmUrl,
       },
     },
   });
-  if (error) console.error('[resend] sendConfirmationEmail failed:', error);
+  if (error) console.error('[resend] sendNewsletterConfirmationEmail failed:', error);
 }
 
 const LANDLORD_TPL_ID = process.env.RESEND_LANDLORD_TPL_ID!;

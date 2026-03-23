@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { newsletterLimiter, checkRateLimit, redis } from '../lib/ratelimit';
-import { sendConfirmationEmail } from '../lib/resend';
+import { sendNewsletterConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24; // 24 hours
@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await redis.set(`nl:pending:${token}`, { email, lang }, { ex: TOKEN_TTL_SECONDS });
   await redis.set(`nl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
-  await sendConfirmationEmail(email, lang, token);
+  await sendNewsletterConfirmationEmail(email, lang, token);
 
   return res.status(200).json({ ok: true });
 }
