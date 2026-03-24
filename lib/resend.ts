@@ -17,18 +17,16 @@ export interface LandlordPayload {
 const resendSend  = new Resend(process.env.RESEND_SEND_KEY!);
 const resendAdmin = new Resend(process.env.RESEND_KEY!);
 
-const NEWSLETTER_TPL_ID = process.env.RESEND_NEWSLETTER_TPL_ID!;
-
 // When additional language templates are created, map them here
 const NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
-  en:  NEWSLETTER_TPL_ID,
-  es:  NEWSLETTER_TPL_ID,
-  fr:  NEWSLETTER_TPL_ID,
-  cat: NEWSLETTER_TPL_ID,
+  en:  process.env.RESEND_NEWSLETTER_EN_TPL_ID!,
+  es:  process.env.RESEND_NEWSLETTER_ES_TPL_ID!,
+  fr:  process.env.RESEND_NEWSLETTER_FR_TPL_ID!,
+  cat: process.env.RESEND_NEWSLETTER_CAT_TPL_ID!,
 };
 
 export async function sendNewsletterConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
-  const confirmUrl = `${API_URL}/api/confirm?token=${token}&lang=${lang}`;
+  const confirmUrl = `${API_URL}/api/confirm-newsletter?token=${token}&lang=${lang}`;
 
   const { error } = await resendSend.emails.send({
     to: email,
@@ -59,7 +57,7 @@ const RENTAL_TYPE_LABELS: Record<string, string> = {
 };
 
 export async function sendLandlordConfirmationEmail(email: string, lang: Lang, token: string, payload: LandlordPayload): Promise<void> {
-  const confirmUrl = `${API_URL}/api/confirm-landlord?token=${token}&lang=${lang}`;
+  const confirmUrl = `${API_URL}/api/confirm-landlord-form?token=${token}&lang=${lang}`;
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
@@ -151,7 +149,7 @@ const DAILY_RHYTHM_LABELS: Record<string, string> = {
 };
 
 export async function sendStudentConfirmationEmail(email: string, lang: Lang, token: string, payload: StudentPayload, newsletter: boolean): Promise<void> {
-  const confirmUrl = `${API_URL}/api/confirm-student?token=${token}&lang=${lang}${newsletter ? '&newsletter=1' : ''}`;
+  const confirmUrl = `${API_URL}/api/confirm-student-form?token=${token}&lang=${lang}${newsletter ? '&newsletter=1' : ''}`;
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
