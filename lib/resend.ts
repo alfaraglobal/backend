@@ -22,7 +22,7 @@ const NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
   en:  process.env.RESEND_NEWSLETTER_EN_TPL_ID!,
   es:  process.env.RESEND_NEWSLETTER_ES_TPL_ID!,
   fr:  process.env.RESEND_NEWSLETTER_FR_TPL_ID!,
-  cat: process.env.RESEND_NEWSLETTER_CAT_TPL_ID!,
+  ca: process.env.RESEND_NEWSLETTER_CA_TPL_ID!,
 };
 
 export async function sendNewsletterConfirmationEmail(email: string, lang: Lang, token: string): Promise<void> {
@@ -47,7 +47,7 @@ const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
   en: LANDLORD_TPL_ID,
   es: LANDLORD_TPL_ID,
   fr: LANDLORD_TPL_ID,
-  cat: LANDLORD_TPL_ID,
+  ca: LANDLORD_TPL_ID,
 };
 
 const RENTAL_TYPE_LABELS: Record<string, string> = {
@@ -110,14 +110,14 @@ const STUDENT_TEMPLATE_ID: Record<Lang, string> = {
   en: STUDENT_TPL_ID,
   es: STUDENT_TPL_ID,
   fr: STUDENT_TPL_ID,
-  cat: STUDENT_TPL_ID,
+  ca: STUDENT_TPL_ID,
 };
 
 const STUDENT_NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
   en: STUDENT_NEWSLETTER_TPL_ID,
   es: STUDENT_NEWSLETTER_TPL_ID,
   fr: STUDENT_NEWSLETTER_TPL_ID,
-  cat: STUDENT_NEWSLETTER_TPL_ID,
+  ca: STUDENT_NEWSLETTER_TPL_ID,
 };
 
 const ACCOMMODATION_TYPE_LABELS: Record<string, string> = {
@@ -184,7 +184,7 @@ const SEGMENT_ID: Record<Lang, string | undefined> = {
   en: process.env.RESEND_SEGMENT_EN_ID,
   fr: process.env.RESEND_SEGMENT_FR_ID,
   es: process.env.RESEND_SEGMENT_ES_ID,
-  cat: process.env.RESEND_SEGMENT_ES_ID,
+  ca: process.env.RESEND_SEGMENT_ES_ID,
 };
 
 interface AddContactOptions {
