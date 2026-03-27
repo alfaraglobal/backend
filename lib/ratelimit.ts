@@ -28,6 +28,13 @@ export const studentLimiter = new Ratelimit({
   prefix: 'rl:student',
 });
 
+// 10 requests per IP per 10 minutes (shared across all confirm endpoints)
+export const confirmLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, '10 m'),
+  prefix: 'rl:confirm',
+});
+
 export async function checkRateLimit(
   limiter: Ratelimit,
   req: VercelRequest,

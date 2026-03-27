@@ -1,10 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { redis } from '../lib/ratelimit';
+import { redis, confirmLimiter, checkRateLimit } from '../lib/ratelimit';
 import { addContact } from '../lib/resend';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
+
+  if (!await checkRateLimit(confirmLimiter, req, res)) return;
 
   const { token, lang: queryLang } = req.query;
   const fallbackLang: Lang = typeof queryLang === 'string' && VALID_LANGS.includes(queryLang as Lang) ? queryLang as Lang : 'en';

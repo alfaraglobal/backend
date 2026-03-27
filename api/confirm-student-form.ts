@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { redis } from '../lib/ratelimit';
+import { redis, confirmLimiter, checkRateLimit } from '../lib/ratelimit';
 import { addContact } from '../lib/resend';
 import { appendStudentRow } from '../lib/sheets';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
@@ -9,6 +9,8 @@ const COOLDOWN_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
+
+  if (!await checkRateLimit(confirmLimiter, req, res)) return;
 
   const { token, lang: queryLang, newsletter: queryNewsletter } = req.query;
   const newsletter = queryNewsletter === '1';
