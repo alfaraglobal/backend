@@ -158,7 +158,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await redis.set(`sl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
   const newsletter = b.newsletter === true;
-  await sendStudentConfirmationEmail(email, lang, token, payload, newsletter);
+  try {
+    await sendStudentConfirmationEmail(email, lang, token, payload, newsletter);
+  } catch (err) {
+    console.error('[student-form] email send failed:', err);
+    await redis.del(`sl:pending:${token}`);
+    await redis.del(`sl:cooldown:${email}`);
+    return res.status(500).json({ error: 'server-error' });
+  }
 
   return res.status(200).json({ ok: true });
 }

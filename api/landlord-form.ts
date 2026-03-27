@@ -102,7 +102,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await redis.set(`ll:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
   await redis.set(`ll:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
-  await sendLandlordConfirmationEmail(email, lang, token, payload);
+  try {
+    await sendLandlordConfirmationEmail(email, lang, token, payload);
+  } catch (err) {
+    console.error('[landlord-form] email send failed:', err);
+    await redis.del(`ll:pending:${token}`);
+    await redis.del(`ll:cooldown:${email}`);
+    return res.status(500).json({ error: 'server-error' });
+  }
 
   return res.status(200).json({ ok: true });
 }

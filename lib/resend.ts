@@ -37,7 +37,7 @@ export async function sendNewsletterConfirmationEmail(email: string, lang: Lang,
       },
     },
   });
-  if (error) console.error('[resend] sendNewsletterConfirmationEmail failed:', error);
+  if (error) throw new Error(`[resend] sendNewsletterConfirmationEmail: ${error.message}`);
 }
 
 const LANDLORD_TPL_ID = process.env.RESEND_LANDLORD_TPL_ID!;
@@ -81,7 +81,7 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
       },
     },
   });
-  if (error) console.error('[resend] sendLandlordConfirmationEmail failed:', error);
+  if (error) throw new Error(`[resend] sendLandlordConfirmationEmail: ${error.message}`);
 }
 
 export interface StudentPayload {
@@ -177,7 +177,7 @@ export async function sendStudentConfirmationEmail(email: string, lang: Lang, to
       },
     },
   });
-  if (error) console.error('[resend] sendStudentConfirmationEmail failed:', error);
+  if (error) throw new Error(`[resend] sendStudentConfirmationEmail: ${error.message}`);
 }
 
 const SEGMENT_ID: Record<Lang, string | undefined> = {
@@ -204,5 +204,5 @@ export async function addContact({ email, lang, firstName, lastName }: AddContac
     ...(lastName ? { lastName } : {}),
     ...(segmentId ? { segments: [{ id: segmentId }] } : {}),
   });
-  if (error) console.error('[resend] addContact failed:', error);
+  if (error) throw new Error(`[resend] addContact: ${error.message}`);
 }

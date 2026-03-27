@@ -29,10 +29,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (payload.newsletter) {
     const firstName = [payload.name, payload.middle_name].filter(Boolean).join(' ');
-    await addContact({ email: payload.email, lang: payload.lang, firstName, lastName: payload.surname });
+    try {
+      await addContact({ email: payload.email, lang: payload.lang, firstName, lastName: payload.surname });
+    } catch (err) {
+      console.error('[confirm-student-form] addContact failed:', err);
+    }
   }
 
-  await appendStudentRow(token, payload);
+  try {
+    await appendStudentRow(token, payload);
+  } catch (err) {
+    console.error('[confirm-student-form] appendStudentRow failed:', err);
+    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=500`);
+  }
 
   await redis.del(`sl:pending:${token}`);
   await redis.set(`sl:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });

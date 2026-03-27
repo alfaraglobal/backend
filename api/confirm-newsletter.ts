@@ -23,7 +23,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { email, lang } = pending;
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
-  await addContact({ email, lang });
+  try {
+    await addContact({ email, lang });
+  } catch (err) {
+    console.error('[confirm-newsletter] addContact failed:', err);
+    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=500`);
+  }
+
   await redis.del(`nl:pending:${token}`);
 
   return res.redirect(302, `${SITE_URL}${langPrefix}/status?type=subscribed`);

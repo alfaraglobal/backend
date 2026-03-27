@@ -45,7 +45,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await redis.set(`nl:pending:${token}`, { email, lang }, { ex: TOKEN_TTL_SECONDS });
   await redis.set(`nl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
-  await sendNewsletterConfirmationEmail(email, lang, token);
+  try {
+    await sendNewsletterConfirmationEmail(email, lang, token);
+  } catch (err) {
+    console.error('[subscribe-newsletter] email send failed:', err);
+    await redis.del(`nl:pending:${token}`);
+    await redis.del(`nl:cooldown:${email}`);
+    return res.status(500).json({ error: 'server-error' });
+  }
 
   return res.status(200).json({ ok: true });
 }

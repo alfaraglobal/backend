@@ -12,18 +12,14 @@ async function appendRow(spreadsheetId: string, token: string, values: (string |
   const sheets = google.sheets({ version: 'v4', auth });
   const timestamp = new Date().toISOString();
 
-  try {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: 'Submissions!A:A',
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[token, timestamp, ...values]],
-      },
-    });
-  } catch (error) {
-    console.error('[sheets] appendRow failed:', error);
-  }
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Submissions!A:A',
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[token, timestamp, ...values]],
+    },
+  });
 }
 
 export async function appendStudentRow(token: string, payload: {

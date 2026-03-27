@@ -23,7 +23,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-form-landlord`);
   }
 
-  await appendLandlordRow(token, payload);
+  try {
+    await appendLandlordRow(token, payload);
+  } catch (err) {
+    console.error('[confirm-landlord-form] appendLandlordRow failed:', err);
+    return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=500`);
+  }
 
   await redis.del(`ll:pending:${token}`);
   await redis.set(`ll:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });
