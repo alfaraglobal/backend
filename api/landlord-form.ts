@@ -4,14 +4,12 @@ import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { landlordLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { sendLandlordConfirmationEmail } from '../lib/resend';
-import { VALID_LANGS, type Lang } from '../lib/config';
+import { VALID_LANGS, type Lang, RENTAL_TYPES, type RentalType } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
 const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
-
-const VALID_RENTAL_TYPES = new Set(['individual_rooms', 'whole_house', 'room_in_your_home']);
 
 const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, location: 100, comments: 2000 };
 
@@ -68,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (
     !Array.isArray(b.rental_type) ||
     b.rental_type.length === 0 ||
-    !b.rental_type.every((v: unknown) => typeof v === 'string' && VALID_RENTAL_TYPES.has(v))
+    !b.rental_type.every((v: unknown): v is RentalType => typeof v === 'string' && (RENTAL_TYPES as readonly string[]).includes(v))
   ) errors.rental_type = 'selectAtLeast';
 
   if (Object.keys(errors).length > 0)
@@ -88,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     email,
     location: b.location.trim(),
     international_students: b.international_students as boolean,
-    rental_type: b.rental_type as string[],
+    rental_type: b.rental_type as RentalType[],
     lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
     ...(b.phone ? { phone: b.phone as string } : {}),

@@ -4,17 +4,12 @@ import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { studentLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { sendStudentConfirmationEmail } from '../lib/resend';
-import { VALID_LANGS, type Lang } from '../lib/config';
+import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
 const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
-
-const VALID_ACCOMMODATION_TYPES = new Set(['room_in_shared_flat', 'entire_apartment', 'co_living', 'student_residence', 'i_trust_you']);
-const VALID_LOCATION_PREFERENCES = new Set(['university', 'metro', 'center', 'green_area', 'i_trust_you']);
-const VALID_HOME_VIBES = new Set(['quiet', 'social', 'between']);
-const VALID_DAILY_RHYTHMS = new Set(['early_bird', 'night_owl', 'flexible']);
 
 const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, nationality: 100, comments: 2000 };
 const BUDGET_MIN = 200;
@@ -104,20 +99,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // — Accommodation —
 
-  if (typeof b.accommodation_type !== 'string' || !VALID_ACCOMMODATION_TYPES.has(b.accommodation_type))
+  if (typeof b.accommodation_type !== 'string' || !(ACCOMMODATION_TYPES as readonly string[]).includes(b.accommodation_type))
     errors.accommodation_type = 'selectOne';
 
-  if (typeof b.location_preference !== 'string' || !VALID_LOCATION_PREFERENCES.has(b.location_preference))
+  if (typeof b.location_preference !== 'string' || !(LOCATION_PREFERENCES as readonly string[]).includes(b.location_preference))
     errors.location_preference = 'selectOne';
 
   const budget = typeof b.budget === 'number' ? b.budget : Number(b.budget);
   if (!Number.isFinite(budget) || budget < BUDGET_MIN || budget > BUDGET_MAX)
     errors.budget = 'invalidBudget';
 
-  if (b.home_vibe !== undefined && (typeof b.home_vibe !== 'string' || !VALID_HOME_VIBES.has(b.home_vibe)))
+  if (b.home_vibe !== undefined && (typeof b.home_vibe !== 'string' || !(HOME_VIBES as readonly string[]).includes(b.home_vibe)))
     errors.home_vibe = 'selectOne';
 
-  if (b.daily_rhythm !== undefined && (typeof b.daily_rhythm !== 'string' || !VALID_DAILY_RHYTHMS.has(b.daily_rhythm)))
+  if (b.daily_rhythm !== undefined && (typeof b.daily_rhythm !== 'string' || !(DAILY_RHYTHMS as readonly string[]).includes(b.daily_rhythm)))
     errors.daily_rhythm = 'selectOne';
 
   if (Object.keys(errors).length > 0)
@@ -135,15 +130,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     nationality: b.nationality.trim(),
     arrival_date: b.arrival_date as string,
     departure_date: b.departure_date as string,
-    accommodation_type: b.accommodation_type as string,
-    location_preference: b.location_preference as string,
+    accommodation_type: b.accommodation_type as AccommodationType,
+    location_preference: b.location_preference as LocationPreference,
     budget,
     newsletter: b.newsletter === true,
     lang: (VALID_LANGS.includes(req.body?.lang) ? req.body.lang : 'en') as Lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
     ...(b.phone ? { phone: b.phone as string } : {}),
-    ...(b.home_vibe ? { home_vibe: b.home_vibe as string } : {}),
-    ...(b.daily_rhythm ? { daily_rhythm: b.daily_rhythm as string } : {}),
+    ...(b.home_vibe ? { home_vibe: b.home_vibe as HomeVibe } : {}),
+    ...(b.daily_rhythm ? { daily_rhythm: b.daily_rhythm as DailyRhythm } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 

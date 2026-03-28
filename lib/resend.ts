@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { API_URL, SITE_URL, type Lang } from './config';
+import { API_URL, SITE_URL, type Lang, type RentalType, type AccommodationType, type LocationPreference, type HomeVibe, type DailyRhythm } from './config';
 
 export interface LandlordPayload {
   name: string;
@@ -7,21 +7,21 @@ export interface LandlordPayload {
   email: string;
   location: string;
   international_students: boolean;
-  rental_type: string[];
+  rental_type: RentalType[];
   lang: Lang;
   middle_name?: string;
   phone?: string;
   comments?: string;
 }
 
-const resendSend  = new Resend(process.env.RESEND_SEND_KEY!);
+const resendSend = new Resend(process.env.RESEND_SEND_KEY!);
 const resendAdmin = new Resend(process.env.RESEND_KEY!);
 
 // When additional language templates are created, map them here
 const NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
-  en:  process.env.RESEND_NEWSLETTER_EN_TPL_ID!,
-  es:  process.env.RESEND_NEWSLETTER_ES_TPL_ID!,
-  fr:  process.env.RESEND_NEWSLETTER_FR_TPL_ID!,
+  en: process.env.RESEND_NEWSLETTER_EN_TPL_ID!,
+  es: process.env.RESEND_NEWSLETTER_ES_TPL_ID!,
+  fr: process.env.RESEND_NEWSLETTER_FR_TPL_ID!,
   ca: process.env.RESEND_NEWSLETTER_CA_TPL_ID!,
 };
 
@@ -40,20 +40,35 @@ export async function sendNewsletterConfirmationEmail(email: string, lang: Lang,
   if (error) throw new Error(`[resend] sendNewsletterConfirmationEmail: ${error.message}`);
 }
 
-const LANDLORD_TPL_ID = process.env.RESEND_LANDLORD_TPL_ID!;
-
 // When additional language templates are created, map them here
 const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
-  en: LANDLORD_TPL_ID,
-  es: LANDLORD_TPL_ID,
-  fr: LANDLORD_TPL_ID,
-  ca: LANDLORD_TPL_ID,
+  en: process.env.RESEND_LANDLORD_EN_TPL_ID!,
+  es: process.env.RESEND_LANDLORD_ES_TPL_ID!,
+  fr: process.env.RESEND_LANDLORD_FR_TPL_ID!,
+  ca: process.env.RESEND_LANDLORD_CA_TPL_ID!,
 };
 
-const RENTAL_TYPE_LABELS: Record<string, string> = {
-  individual_rooms: 'Individual rooms',
-  whole_house: 'Whole flat or house',
-  room_in_your_home: 'A room in your home',
+const RENTAL_TYPE_LABELS: Record<Lang, Record<RentalType, string>> = {
+  en: {
+    individual_rooms: 'Individual rooms',
+    whole_house: 'Whole flat or house',
+    room_in_your_home: 'A room in your home',
+  },
+  es: {
+    individual_rooms: 'Habitaciones individuales',
+    whole_house: 'Piso o casa completa',
+    room_in_your_home: 'Una habitación en tu casa',
+  },
+  fr: {
+    individual_rooms: 'Chambres individuelles',
+    whole_house: 'Appartement ou maison entière',
+    room_in_your_home: 'Une chambre chez vous',
+  },
+  ca: {
+    individual_rooms: "Habitacions individuals",
+    whole_house: 'Pis o casa completa',
+    room_in_your_home: 'Una habitació a casa teua',
+  },
 };
 
 export async function sendLandlordConfirmationEmail(email: string, lang: Lang, token: string, payload: LandlordPayload): Promise<void> {
@@ -61,7 +76,7 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
-  const rentalType = payload.rental_type.map(t => RENTAL_TYPE_LABELS[t] ?? t).join(', ');
+  const rentalType = payload.rental_type.map(t => RENTAL_TYPE_LABELS[lang][t]).join(', ');
 
   const { error } = await resendSend.emails.send({
     to: email,
@@ -91,61 +106,138 @@ export interface StudentPayload {
   nationality: string;
   arrival_date: string;
   departure_date: string;
-  accommodation_type: string;
-  location_preference: string;
+  accommodation_type: AccommodationType;
+  location_preference: LocationPreference;
   budget: number;
   newsletter: boolean;
   lang: Lang;
   middle_name?: string;
   phone?: string;
-  home_vibe?: string;
-  daily_rhythm?: string;
+  home_vibe?: HomeVibe;
+  daily_rhythm?: DailyRhythm;
   comments?: string;
 }
 
-const STUDENT_TPL_ID = process.env.RESEND_STUDENT_TPL_ID!;
-const STUDENT_NEWSLETTER_TPL_ID = process.env.RESEND_STUDENT_NEWSLETTER_TPL_ID!;
-
 const STUDENT_TEMPLATE_ID: Record<Lang, string> = {
-  en: STUDENT_TPL_ID,
-  es: STUDENT_TPL_ID,
-  fr: STUDENT_TPL_ID,
-  ca: STUDENT_TPL_ID,
+  en: process.env.RESEND_STUDENT_EN_TPL_ID!,
+  es: process.env.RESEND_STUDENT_ES_TPL_ID!,
+  fr: process.env.RESEND_STUDENT_FR_TPL_ID!,
+  ca: process.env.RESEND_STUDENT_CA_TPL_ID!,
 };
 
 const STUDENT_NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
-  en: STUDENT_NEWSLETTER_TPL_ID,
-  es: STUDENT_NEWSLETTER_TPL_ID,
-  fr: STUDENT_NEWSLETTER_TPL_ID,
-  ca: STUDENT_NEWSLETTER_TPL_ID,
+  en: process.env.RESEND_STUDENT_NEWSLETTER_EN_TPL_ID!,
+  es: process.env.RESEND_STUDENT_NEWSLETTER_ES_TPL_ID!,
+  fr: process.env.RESEND_STUDENT_NEWSLETTER_FR_TPL_ID!,
+  ca: process.env.RESEND_STUDENT_NEWSLETTER_CA_TPL_ID!,
 };
 
-const ACCOMMODATION_TYPE_LABELS: Record<string, string> = {
-  room_in_shared_flat: 'Room in a shared flat',
-  entire_apartment: 'Entire apartment',
-  co_living: 'Co-living',
-  student_residence: 'Student residence',
-  i_trust_you: 'Doesn\'t matter, I trust you',
+const ACCOMMODATION_TYPE_LABELS: Record<Lang, Record<AccommodationType, string>> = {
+  en: {
+    room_in_shared_flat: 'Room in a shared flat',
+    entire_apartment: 'Entire apartment',
+    co_living: 'Co-living',
+    student_residence: 'Student residence',
+    i_trust_you: 'Doesn\'t matter, I trust you',
+  },
+  es: {
+    room_in_shared_flat: 'Habitación en piso compartido',
+    entire_apartment: 'Piso completo',
+    co_living: 'Co-living',
+    student_residence: 'Residencia de estudiantes',
+    i_trust_you: 'No importa, confío en vosotros',
+  },
+  fr: {
+    room_in_shared_flat: 'Chambre en colocation',
+    entire_apartment: 'Appartement entier',
+    co_living: 'Co-living',
+    student_residence: 'Résidence étudiante',
+    i_trust_you: 'Peu importe, je vous fais confiance',
+  },
+  ca: {
+    room_in_shared_flat: 'Habitació en pis compartit',
+    entire_apartment: 'Pis complet',
+    co_living: 'Co-living',
+    student_residence: 'Residència d\'estudiants',
+    i_trust_you: 'No importa, confie en vosaltres',
+  },
 };
 
-const LOCATION_PREFERENCE_LABELS: Record<string, string> = {
-  university: 'Next to the University',
-  metro: 'Close to the Metro station',
-  center: 'Center',
-  green_area: 'Near green areas',
-  i_trust_you: 'Doesn\'t matter, I trust you',
+const LOCATION_PREFERENCE_LABELS: Record<Lang, Record<LocationPreference, string>> = {
+  en: {
+    university: 'Next to CEU',
+    metro: 'Close to the Metro station',
+    center: 'Center',
+    green_area: 'Near green areas',
+    i_trust_you: 'Doesn\'t matter, I trust you',
+  },
+  es: {
+    university: 'Junto al CEU',
+    metro: 'Cerca de la estación de Metro',
+    center: 'Centro',
+    green_area: 'Cerca de zonas verdes',
+    i_trust_you: 'No importa, confío en vosotros',
+  },
+  fr: {
+    university: 'À côté de l\'Université',
+    metro: 'Près de la station de Métro',
+    center: 'Centre-ville',
+    green_area: 'Près des espaces verts',
+    i_trust_you: 'Peu importe, je vous fais confiance',
+  },
+  ca: {
+    university: 'Al costat del CEU',
+    metro: 'Prop de l\'estació de Metro',
+    center: 'Centre',
+    green_area: 'Prop de zones verdes',
+    i_trust_you: 'No importa, confie en vosaltres',
+  },
 };
 
-const HOME_VIBE_LABELS: Record<string, string> = {
-  quiet: 'Quiet and tidy',
-  social: 'Social and lively',
-  between: 'Somewhere in between',
+const HOME_VIBE_LABELS: Record<Lang, Record<HomeVibe, string>> = {
+  en: {
+    quiet: 'Quiet and tidy',
+    social: 'Social and lively',
+    between: 'Somewhere in between',
+  },
+  es: {
+    quiet: 'Tranquilo y ordenado',
+    social: 'Social y animado',
+    between: 'Término medio',
+  },
+  fr: {
+    quiet: 'Calme et ordonné',
+    social: 'Social et animé',
+    between: 'Entre les deux',
+  },
+  ca: {
+    quiet: 'Tranquil i ordenat',
+    social: 'Social i animat',
+    between: 'Terme mig',
+  },
 };
 
-const DAILY_RHYTHM_LABELS: Record<string, string> = {
-  early_bird: 'Early bird',
-  night_owl: 'Night owl',
-  flexible: 'Flexible',
+const DAILY_RHYTHM_LABELS: Record<Lang, Record<DailyRhythm, string>> = {
+  en: {
+    early_bird: 'Early bird',
+    night_owl: 'Night owl',
+    flexible: 'Flexible',
+  },
+  es: {
+    early_bird: 'Madrugador',
+    night_owl: 'Noctámbulo',
+    flexible: 'Flexible',
+  },
+  fr: {
+    early_bird: 'Lève-tôt',
+    night_owl: 'Couche-tard',
+    flexible: 'Flexible',
+  },
+  ca: {
+    early_bird: 'Matiner',
+    night_owl: 'Nocturn',
+    flexible: 'Flexible',
+  },
 };
 
 export async function sendStudentConfirmationEmail(email: string, lang: Lang, token: string, payload: StudentPayload, newsletter: boolean): Promise<void> {
@@ -167,12 +259,12 @@ export async function sendStudentConfirmationEmail(email: string, lang: Lang, to
         NATIONALITY: payload.nationality,
         ARRIVAL_DATE: payload.arrival_date,
         DEPARTURE_DATE: payload.departure_date,
-        ACCOMMODATION_TYPE: ACCOMMODATION_TYPE_LABELS[payload.accommodation_type] ?? payload.accommodation_type,
-        LOCATION_PREFERENCE: LOCATION_PREFERENCE_LABELS[payload.location_preference] ?? payload.location_preference,
+        ACCOMMODATION_TYPE: ACCOMMODATION_TYPE_LABELS[lang][payload.accommodation_type],
+        LOCATION_PREFERENCE: LOCATION_PREFERENCE_LABELS[lang][payload.location_preference],
         BUDGET: `€${payload.budget}`,
         ...(payload.phone ? { PHONE: payload.phone } : {}),
-        ...(payload.home_vibe ? { HOME_VIBE: HOME_VIBE_LABELS[payload.home_vibe] ?? payload.home_vibe } : {}),
-        ...(payload.daily_rhythm ? { DAILY_RHYTHM: DAILY_RHYTHM_LABELS[payload.daily_rhythm] ?? payload.daily_rhythm } : {}),
+        ...(payload.home_vibe ? { HOME_VIBE: HOME_VIBE_LABELS[lang][payload.home_vibe] } : {}),
+        ...(payload.daily_rhythm ? { DAILY_RHYTHM: DAILY_RHYTHM_LABELS[lang][payload.daily_rhythm] } : {}),
         ...(payload.comments ? { COMMENTS: payload.comments } : {}),
       },
     },
