@@ -48,6 +48,13 @@ const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
   ca: process.env.RESEND_LANDLORD_CA_TPL_ID!,
 };
 
+const YES_NO_LABELS: Record<Lang, {yes: string; no: string}> = {
+  en: {yes: 'Yes', no: 'No'},
+  es: {yes: 'Sí', no: 'No'},
+  fr: {yes: 'Oui', no: 'Non'},
+  ca: {yes: 'Sí', no: 'No'},
+};
+
 const RENTAL_TYPE_LABELS: Record<Lang, Record<RentalType, string>> = {
   en: {
     individual_rooms: 'Individual rooms',
@@ -89,7 +96,7 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
         FULL_NAME: fullName,
         EMAIL_ADDRESS: payload.email,
         PROPERTY_LOCATION: payload.location,
-        INTERNATIONAL_STUDENTS: payload.international_students ? 'Yes' : 'No',
+        INTERNATIONAL_STUDENTS: payload.international_students ? YES_NO_LABELS[lang].yes : YES_NO_LABELS[lang].no,
         RENTAL_TYPE: rentalType,
         ...(payload.phone ? { PHONE: payload.phone } : {}),
         ...(payload.comments ? { COMMENTS: payload.comments } : {}),
