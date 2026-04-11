@@ -28,6 +28,13 @@ export const studentLimiter = new Ratelimit({
   prefix: 'rl:student',
 });
 
+// 3 requests per IP per 10 minutes
+export const waitlistLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, '10 m'),
+  prefix: 'rl:waitlist',
+});
+
 // 10 requests per IP per 10 minutes (shared across all confirm endpoints)
 export const confirmLimiter = new Ratelimit({
   redis,
