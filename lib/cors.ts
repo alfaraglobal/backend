@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const PRODUCTION_ORIGINS = ['https://alfaraglobal.com'];
+const PRODUCTION_ORIGINS = ['https://alfaraglobal.com', 'https://www.alfaraglobal.com'];
 
 function getAllowedOrigins(): string[] {
   const extra = process.env.ALLOWED_ORIGINS ?? '';
