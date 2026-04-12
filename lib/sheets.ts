@@ -75,6 +75,8 @@ export async function appendStudentRow(token: string, payload: {
     payload.daily_rhythm ?? '',
     payload.comments ?? '',
     payload.newsletter ? 'Yes' : 'No',
+    '',
+    'Pending',
   ]);
 }
 
@@ -101,5 +103,7 @@ export async function appendLandlordRow(token: string, payload: {
     payload.international_students ? 'Yes' : 'No',
     payload.rental_type.join('; '),
     payload.comments ?? '',
+    '',
+    'Pending',
   ]);
 }
