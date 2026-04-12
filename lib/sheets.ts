@@ -8,13 +8,17 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-async function appendRow(spreadsheetId: string, token: string, values: (string | number | boolean)[]): Promise<void> {
+const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
+const TAB_STUDENT = process.env.GOOGLE_SHEETS_TAB_STUDENT!;
+const TAB_LANDLORD = process.env.GOOGLE_SHEETS_TAB_LANDLORD!;
+
+async function appendRow(tab: string, token: string, values: (string | number | boolean)[]): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
   const timestamp = new Date().toISOString();
 
   await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Submissions!A:A',
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${tab}!A:A`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [[token, timestamp, ...values]],
@@ -40,7 +44,7 @@ export async function appendStudentRow(token: string, payload: {
   comments?: string;
   newsletter: boolean;
 }): Promise<void> {
-  await appendRow(process.env.GOOGLE_SHEETS_ID_STUDENT!, token, [
+  await appendRow(TAB_STUDENT, token, [
     payload.lang,
     payload.name,
     payload.middle_name ?? '',
@@ -72,7 +76,7 @@ export async function appendLandlordRow(token: string, payload: {
   rental_type: string[];
   comments?: string;
 }): Promise<void> {
-  await appendRow(process.env.GOOGLE_SHEETS_ID_LANDLORD!, token, [
+  await appendRow(TAB_LANDLORD, token, [
     payload.lang,
     payload.name,
     payload.middle_name ?? '',
