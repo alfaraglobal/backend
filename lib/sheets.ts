@@ -76,7 +76,7 @@ export async function appendStudentRow(token: string, payload: {
     payload.comments ?? '',
     payload.newsletter ? 'Yes' : 'No',
     '',
-    'Pendiente',
+    process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
 }
 
@@ -104,6 +104,6 @@ export async function appendLandlordRow(token: string, payload: {
     payload.rental_type.join('; '),
     payload.comments ?? '',
     '',
-    'Pendiente',
+    process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
 }
