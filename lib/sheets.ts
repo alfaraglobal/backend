@@ -32,7 +32,7 @@ export async function appendWaitlistRow(email: string): Promise<void> {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEETS_ID_WAITLIST!,
-    range: 'Waitlist!A:A',
+    range: `${process.env.GOOGLE_SHEETS_TAB_WAITLIST!}!A:A`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [[timestamp, email]],
