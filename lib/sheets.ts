@@ -104,6 +104,6 @@ export async function appendLandlordRow(token: string, payload: {
     payload.rental_type.join('; '),
     payload.comments ?? '',
     '',
-    'Pending',
+    'Pendiente',
   ]);
 }
