@@ -76,7 +76,7 @@ export async function appendStudentRow(token: string, payload: {
     payload.comments ?? '',
     payload.newsletter ? 'Yes' : 'No',
     '',
-    'Pending',
+    'Pendiente',
   ]);
 }
 
