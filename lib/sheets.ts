@@ -100,7 +100,7 @@ export async function appendLandlordRow(token: string, payload: {
     payload.email,
     payload.phone ?? '',
     payload.location,
-    payload.international_students ? 'TRUE' : 'FALSE',
+    payload.international_students,
     payload.rental_type.join('; '),
     payload.comments ?? '',
     '',
