@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { redis, confirmLimiter, checkRateLimit } from '../lib/ratelimit';
+import { redis, confirmLimiter, checkRateLimit, hashEmail } from '../lib/ratelimit';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
 import type { LandlordPayload } from '../lib/resend';
 import { appendLandlordRow } from '../lib/sheets';
@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await redis.del(`ll:pending:${token}`);
-  await redis.set(`ll:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });
+  await redis.set(`ll:confirmed:${hashEmail(payload.email)}`, '1', { ex: COOLDOWN_TTL_SECONDS });
 
   return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=form-success-landlord`);
 }

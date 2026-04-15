@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { studentLimiter, checkRateLimit, redis } from '../lib/ratelimit';
+import { studentLimiter, checkRateLimit, redis, hashEmail } from '../lib/ratelimit';
 import { sendStudentConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
@@ -118,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (Object.keys(errors).length > 0)
     return res.status(400).json({ ok: false, errors });
 
-  const alreadyConfirmed = await redis.get(`sl:confirmed:${email}`);
+  const alreadyConfirmed = await redis.get(`sl:confirmed:${hashEmail(email)}`);
   if (alreadyConfirmed) return res.status(200).json({ ok: true });
 
   // — Cleaning —
@@ -142,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 
-  const onCooldown = await redis.get(`sl:cooldown:${email}`);
+  const onCooldown = await redis.get(`sl:cooldown:${hashEmail(email)}`);
   if (onCooldown) return res.status(200).json({ ok: true });
 
   const rawLang = req.body?.lang;
@@ -150,7 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const token = randomUUID();
   await redis.set(`sl:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
-  await redis.set(`sl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
+  await redis.set(`sl:cooldown:${hashEmail(email)}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
   const newsletter = b.newsletter === true;
   try {
@@ -158,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     console.error('[student-form] email send failed:', err);
     await redis.del(`sl:pending:${token}`);
-    await redis.del(`sl:cooldown:${email}`);
+    await redis.del(`sl:cooldown:${hashEmail(email)}`);
     return res.status(500).json({ error: 'server-error' });
   }
 

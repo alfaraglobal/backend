@@ -1,6 +1,11 @@
 import { Redis } from '@upstash/redis';
 import { Ratelimit } from '@upstash/ratelimit';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createHash } from 'crypto';
+
+export function hashEmail(email: string): string {
+  return createHash('sha256').update(email).digest('hex');
+}
 
 export const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,

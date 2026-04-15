@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { redis, confirmLimiter, checkRateLimit } from '../lib/ratelimit';
+import { redis, confirmLimiter, checkRateLimit, hashEmail } from '../lib/ratelimit';
 import { addContact } from '../lib/resend';
 import { appendStudentRow } from '../lib/sheets';
 import { SITE_URL, VALID_LANGS, type Lang } from '../lib/config';
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await redis.del(`sl:pending:${token}`);
-  await redis.set(`sl:confirmed:${payload.email}`, '1', { ex: COOLDOWN_TTL_SECONDS });
+  await redis.set(`sl:confirmed:${hashEmail(payload.email)}`, '1', { ex: COOLDOWN_TTL_SECONDS });
 
   const successType = payload.newsletter ? 'form-and-subscribed' : 'form-success-student';
   return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=${successType}`);

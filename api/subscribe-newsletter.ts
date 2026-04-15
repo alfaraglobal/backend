@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { newsletterLimiter, checkRateLimit, redis } from '../lib/ratelimit';
+import { newsletterLimiter, checkRateLimit, redis, hashEmail } from '../lib/ratelimit';
 import { sendNewsletterConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid email' });
   }
 
-  const onCooldown = await redis.get(`nl:cooldown:${email}`);
+  const onCooldown = await redis.get(`nl:cooldown:${hashEmail(email)}`);
   if (onCooldown) return res.status(200).json({ ok: true });
 
   const rawLang = req.body?.lang;
@@ -43,14 +43,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const token = randomUUID();
   await redis.set(`nl:pending:${token}`, { email, lang }, { ex: TOKEN_TTL_SECONDS });
-  await redis.set(`nl:cooldown:${email}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
+  await redis.set(`nl:cooldown:${hashEmail(email)}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
 
   try {
     await sendNewsletterConfirmationEmail(email, lang, token);
   } catch (err) {
     console.error('[subscribe-newsletter] email send failed:', err);
     await redis.del(`nl:pending:${token}`);
-    await redis.del(`nl:cooldown:${email}`);
+    await redis.del(`nl:cooldown:${hashEmail(email)}`);
     return res.status(500).json({ error: 'server-error' });
   }
 
