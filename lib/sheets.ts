@@ -101,7 +101,7 @@ export async function appendLandlordRow(token: string, payload: {
     payload.phone ?? '',
     payload.location,
     payload.international_students,
-    payload.rental_type.join('; '),
+    payload.rental_type.join(', '),
     payload.comments ?? '',
     '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
