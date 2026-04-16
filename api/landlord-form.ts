@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { landlordLimiter, checkRateLimit, redis, hashEmail } from '../lib/ratelimit';
+import { landlordLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { sendLandlordConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang, RENTAL_TYPES, type RentalType } from '../lib/config';
 
@@ -93,12 +93,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 
-  const onCooldown = await redis.get(`ll:cooldown:${hashEmail(email)}`);
-  if (onCooldown) return res.status(200).json({ ok: true });
+  if (await isOnCooldown(`ll:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
 
   const token = randomUUID();
   await redis.set(`ll:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
-  await redis.set(`ll:cooldown:${hashEmail(email)}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
+  await setCooldown(`ll:cooldown:${hashEmail(email)}`, EMAIL_COOLDOWN_SECONDS);
 
   try {
     await sendLandlordConfirmationEmail(email, lang, token, payload);
