@@ -8,9 +8,9 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID!;
-const TAB_STUDENT = process.env.GOOGLE_SHEETS_TAB_STUDENT!;
-const TAB_LANDLORD = process.env.GOOGLE_SHEETS_TAB_LANDLORD!;
+const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_HOUSING_ID!;
+const TAB_STUDENT = process.env.GOOGLE_SHEETS_HOUSING_TAB_STUDENT!;
+const TAB_LANDLORD = process.env.GOOGLE_SHEETS_HOUSING_TAB_LANDLORD!;
 
 async function appendRow(tab: string, token: string, values: (string | number | boolean)[]): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
@@ -31,8 +31,8 @@ export async function appendWaitlistRow(email: string): Promise<void> {
   const timestamp = new Date().toISOString();
 
   await sheets.spreadsheets.values.append({
-    spreadsheetId: process.env.GOOGLE_SHEETS_ID_WAITLIST!,
-    range: `${process.env.GOOGLE_SHEETS_TAB_WAITLIST!}!A:A`,
+    spreadsheetId: process.env.GOOGLE_SHEETS_WAITLIST_ID!,
+    range: `${process.env.GOOGLE_SHEETS_WAITLIST_TAB!}!A:A`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [[timestamp, email]],
@@ -78,6 +78,36 @@ export async function appendStudentRow(token: string, payload: {
     '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
+}
+
+export async function appendCeuVerificationRow(payload: {
+  name: string;
+  email: string;
+  documentUrl: string;
+  documentUrlExpiry: string;
+  fileName: string;
+  authenticatedUrl: string;
+}): Promise<void> {
+  const sheets = google.sheets({ version: 'v4', auth });
+  const timestamp = new Date().toISOString();
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: process.env.GOOGLE_SHEETS_CEU_VERIFICATION_ID!,
+    range: `${process.env.GOOGLE_SHEETS_CEU_VERIFICATION_TAB!}!A:A`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[
+        timestamp,
+        payload.name,
+        payload.email,
+        payload.documentUrl,
+        payload.documentUrlExpiry,
+        payload.fileName,
+        payload.authenticatedUrl,
+        process.env.GOOGLE_SHEETS_PENDING_STATUS!,
+      ]],
+    },
+  });
 }
 
 export async function appendLandlordRow(token: string, payload: {

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { studentLimiter, checkRateLimit, redis, hashEmail } from '../lib/ratelimit';
+import { studentLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { sendStudentConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
@@ -142,15 +142,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 
-  const onCooldown = await redis.get(`sl:cooldown:${hashEmail(email)}`);
-  if (onCooldown) return res.status(200).json({ ok: true });
+  if (await isOnCooldown(`sl:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
 
   const rawLang = req.body?.lang;
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
   const token = randomUUID();
   await redis.set(`sl:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
-  await redis.set(`sl:cooldown:${hashEmail(email)}`, '1', { ex: EMAIL_COOLDOWN_SECONDS });
+  await setCooldown(`sl:cooldown:${hashEmail(email)}`, EMAIL_COOLDOWN_SECONDS);
 
   const newsletter = b.newsletter === true;
   try {
