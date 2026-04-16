@@ -54,6 +54,20 @@ export const confirmLimiter = new Ratelimit({
   prefix: 'rl:confirm',
 });
 
+// 5 requests per IP per 10 minutes
+export const portalLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '10 m'),
+  prefix: 'rl:portal',
+});
+
+// 5 requests per IP per 10 minutes
+export const checkoutLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '10 m'),
+  prefix: 'rl:checkout',
+});
+
 export async function isOnCooldown(key: string): Promise<boolean> {
   if (process.env.NODE_ENV === 'development') return false;
   return !!(await redis.get(key));
