@@ -47,6 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         metadata: { language: lang },
       },
       automatic_tax: { enabled: true },
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,  // 30 minutes, the minimum allowed by Stripe
       success_url: `${SITE_URL}/status?type=subscription-success`,
       cancel_url: `${SITE_URL}/community`,
     });
