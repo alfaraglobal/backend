@@ -279,6 +279,35 @@ export async function sendStudentConfirmationEmail(email: string, lang: Lang, to
   if (error) throw new Error(`[resend] sendStudentConfirmationEmail: ${error.message}`);
 }
 
+const CUSTOMER_PORTAL_DEFAULT_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_EN_TPL_ID!,
+  es: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_ES_TPL_ID!,
+  fr: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_FR_TPL_ID!,
+  ca: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_CA_TPL_ID!,
+};
+
+const CUSTOMER_PORTAL_PREMIUM_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_CUSTOMER_PORTAL_PREMIUM_EN_TPL_ID!,
+  es: process.env.RESEND_CUSTOMER_PORTAL_PREMIUM_ES_TPL_ID!,
+  fr: process.env.RESEND_CUSTOMER_PORTAL_PREMIUM_FR_TPL_ID!,
+  ca: process.env.RESEND_CUSTOMER_PORTAL_PREMIUM_CA_TPL_ID!,
+};
+
+export async function sendCustomerPortalEmail(email: string, lang: Lang, portalUrl: string, hasPremium: boolean): Promise<void> {
+  const templateId = hasPremium
+    ? CUSTOMER_PORTAL_PREMIUM_TEMPLATE_ID[lang]
+    : CUSTOMER_PORTAL_DEFAULT_TEMPLATE_ID[lang];
+
+  const { error } = await resendSend.emails.send({
+    to: email,
+    template: {
+      id: templateId,
+      variables: { PORTAL_URL: portalUrl },
+    },
+  });
+  if (error) throw new Error(`[resend] sendCustomerPortalEmail: ${error.message}`);
+}
+
 const SEGMENT_ID: Record<Lang, string | undefined> = {
   en: process.env.RESEND_SEGMENT_EN_ID,
   fr: process.env.RESEND_SEGMENT_FR_ID,

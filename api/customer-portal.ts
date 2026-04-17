@@ -3,6 +3,7 @@ import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { portalLimiter, checkRateLimit } from '../lib/ratelimit';
 import { stripe, getActiveSubscription, toStripeLocale, STRIPE_PREMIUM_PRODUCT_ID, STRIPE_PORTAL_CONFIG_DEFAULT, STRIPE_PORTAL_CONFIG_PREMIUM } from '../lib/stripe';
+import { sendCustomerPortalEmail } from '../lib/resend';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
@@ -46,7 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       locale: toStripeLocale(lang),
     });
 
-    return res.status(200).json({ ok: true, url: session.url });
+    await sendCustomerPortalEmail(email, lang, session.url, hasPremium);
+
+    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[customer-portal] error:', err);
     return res.status(500).json({ error: 'server-error' });
