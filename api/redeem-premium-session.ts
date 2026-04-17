@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const payload = await redis.get<PremiumTokenPayload>(`premium_token:${token}`);
-    if (!payload) return res.redirect(`${SITE_URL}/status?type=500`);
+    if (!payload) return res.redirect(`${SITE_URL}/status?type=token-invalid-premium-checkout`);
 
     await redis.del(`premium_token:${token}`);
 

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
 import { isEmail } from 'validator';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { getActiveSubscription } from '../lib/stripe';
 import { redis } from '../lib/ratelimit';
 import { sendPremiumCheckoutEmail } from '../lib/resend';
@@ -16,9 +17,16 @@ function checkAdminKey(req: VercelRequest): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = checkOrigin(req);
+  if (!origin) return forbidden(res);
+
+  if (handlePreflight(req, res, origin, ['x-admin-key'])) return;
+
   if (!checkAdminKey(req)) return res.status(403).end('Forbidden');
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
+
+  setCorsHeaders(res, origin);
 
   const rawEmail = req.body?.email;
   if (typeof rawEmail !== 'string') return res.status(400).json({ error: 'invalid-email' });
