@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { studentLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
-import { sendStudentConfirmationEmail } from '../lib/resend';
+import { sendStudentConfirmationEmail, addContact } from '../lib/resend';
+import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
@@ -141,6 +142,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(b.daily_rhythm ? { daily_rhythm: b.daily_rhythm as DailyRhythm } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
+
+  const formToken = typeof b.formToken === 'string' ? b.formToken : null;
+  if (formToken) {
+    const tokenPayload = await redis.get<{ name: string; email: string }>(`premium_form_token:${formToken}`);
+    if (!tokenPayload || tokenPayload.email !== email) return res.status(403).json({ error: 'forbidden' });
+
+    try {
+      await appendStudentRow(formToken, payload);
+    } catch (err) {
+      console.error('[student-form] premium direct append failed:', err);
+      return res.status(500).json({ error: 'server-error' });
+    }
+
+    return res.status(200).json({ ok: true, direct: true });
+  }
 
   if (await isOnCooldown(`sl:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
 

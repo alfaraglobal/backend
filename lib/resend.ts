@@ -279,6 +279,31 @@ export async function sendStudentConfirmationEmail(email: string, lang: Lang, to
   if (error) throw new Error(`[resend] sendStudentConfirmationEmail: ${error.message}`);
 }
 
+const PREMIUM_CHECKOUT_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_PREMIUM_CHECKOUT_EN_TPL_ID!,
+  es: process.env.RESEND_PREMIUM_CHECKOUT_ES_TPL_ID!,
+  fr: process.env.RESEND_PREMIUM_CHECKOUT_FR_TPL_ID!,
+  ca: process.env.RESEND_PREMIUM_CHECKOUT_CA_TPL_ID!,
+};
+
+export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: string, monthlyUrl: string, yearlyUrl: string, formToken: string): Promise<void> {
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+
+  const { error } = await resendSend.emails.send({
+    to: email,
+    template: {
+      id: PREMIUM_CHECKOUT_TEMPLATE_ID[lang],
+      variables: {
+        NAME: name,
+        MONTHLY_URL: monthlyUrl,
+        YEARLY_URL: yearlyUrl,
+        FORM_URL: `${SITE_URL}${langPrefix}/student-housing-form?token=${formToken}`,
+      },
+    },
+  });
+  if (error) throw new Error(`[resend] sendPremiumCheckoutEmail: ${error.message}`);
+}
+
 const CUSTOMER_PORTAL_DEFAULT_TEMPLATE_ID: Record<Lang, string> = {
   en: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_EN_TPL_ID!,
   es: process.env.RESEND_CUSTOMER_PORTAL_DEFAULT_ES_TPL_ID!,

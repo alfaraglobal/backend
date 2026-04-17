@@ -1,9 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomBytes } from 'crypto';
 import { isEmail } from 'validator';
-import { stripe, getActiveSubscription, toStripeLocale, PREMIUM_PRICE_IDS, VALID_BILLINGS, type Billing } from '../lib/stripe';
-import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
+import { getActiveSubscription } from '../lib/stripe';
+import { redis } from '../lib/ratelimit';
+import { sendPremiumCheckoutEmail } from '../lib/resend';
+import { VALID_LANGS, API_URL, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
+
+const PREMIUM_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days
 
 function checkAdminKey(req: VercelRequest): boolean {
   const key = req.headers['x-admin-key'];
@@ -25,9 +30,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (typeof rawName !== 'string' || rawName.trim().length < 2) return res.status(400).json({ error: 'invalid-name' });
   const name = rawName.trim();
 
-  const billing: Billing | undefined = VALID_BILLINGS.includes(req.body?.billing) ? req.body.billing : undefined;
-  if (!billing) return res.status(400).json({ error: 'invalid-billing' });
-
   const rawLang = req.body?.lang;
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
@@ -35,26 +37,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const existing = await getActiveSubscription(email);
     if (existing) return res.status(409).json({ error: 'already-subscribed' });
 
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    const customer = customers.data.length > 0
-      ? await stripe.customers.update(customers.data[0].id, { name })
-      : await stripe.customers.create({ email, name });
+    const token = randomBytes(32).toString('hex');
+    const formToken = randomBytes(32).toString('hex');
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customer.id,
-      customer_update: { address: 'auto' },
-      locale: toStripeLocale(lang),
-      line_items: [{ price: PREMIUM_PRICE_IDS[billing], quantity: 1 }],
-      subscription_data: {
-        metadata: { language: lang },
-      },
-      automatic_tax: { enabled: true },
-      success_url: `${SITE_URL}/status?type=subscription-success`,
-      cancel_url: `${SITE_URL}/community`,
-    });
+    await Promise.all([
+      redis.set(`premium_token:${token}`, { email, name, lang }, { ex: PREMIUM_TOKEN_TTL }),
+      redis.set(`premium_form_token:${formToken}`, { name, email }, { ex: PREMIUM_TOKEN_TTL }),
+    ]);
 
-    return res.status(200).json({ ok: true, url: session.url });
+    const monthlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=monthly`;
+    const yearlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=yearly`;
+
+    await sendPremiumCheckoutEmail(email, lang, name, monthlyUrl, yearlyUrl, formToken);
+
+    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[admin-create-premium-session] error:', err);
     return res.status(500).json({ error: 'server-error' });
