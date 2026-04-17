@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { portalLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
+import { portalLimiter, checkRateLimit, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { stripe, getActiveSubscription, toStripeLocale, STRIPE_PREMIUM_PRODUCT_ID, STRIPE_PORTAL_CONFIG_DEFAULT, STRIPE_PORTAL_CONFIG_PREMIUM } from '../lib/stripe';
 import { sendCustomerPortalEmail } from '../lib/resend';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';

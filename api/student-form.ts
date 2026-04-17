@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { studentLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
-import { sendStudentConfirmationEmail, addContact } from '../lib/resend';
+import { sendStudentConfirmationEmail } from '../lib/resend';
 import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
