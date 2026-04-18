@@ -12,13 +12,6 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-// 5 requests per IP per 10 minutes
-export const newsletterLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5, '10 m'),
-  prefix: 'rl:newsletter',
-});
-
 // 3 requests per IP per 10 minutes
 export const landlordLimiter = new Ratelimit({
   redis,
