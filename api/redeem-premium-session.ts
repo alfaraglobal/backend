@@ -7,6 +7,7 @@ interface PremiumTokenPayload {
   email: string;
   name: string;
   lang: Lang;
+  phone?: string;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -35,19 +36,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? await stripe.customers.update(customers.data[0].id, { name: payload.name })
       : await stripe.customers.create({ email: payload.email, name: payload.name });
 
+    const contactMetadata = {
+      email: payload.email,
+      language: payload.lang,
+      ...(payload.phone ? { phone: payload.phone } : {}),
+    };
+    const langPrefix = payload.lang === 'en' ? '' : `/${payload.lang}`;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customer.id,
       customer_update: { address: 'auto' },
       locale: toStripeLocale(payload.lang),
       line_items: [{ price: PREMIUM_PRICE_IDS[billing], quantity: 1 }],
+      metadata: contactMetadata,
       subscription_data: {
-        metadata: { language: payload.lang },
+        metadata: contactMetadata,
       },
       automatic_tax: { enabled: true },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-      success_url: `${SITE_URL}/status?type=subscription-success`,
-      cancel_url: SITE_URL,
+      success_url: `${SITE_URL}${langPrefix}/status?type=subscription-success`,
+      cancel_url: `${SITE_URL}${langPrefix}`,
     });
 
     return res.redirect(session.url!);

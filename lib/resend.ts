@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { API_URL, SITE_URL, type Lang, type RentalType, type AccommodationType, type LocationPreference, type HomeVibe, type DailyRhythm } from './config';
+import type { SubscriptionPlan } from './stripe';
 
 export interface LandlordPayload {
   name: string;
@@ -331,6 +332,35 @@ export async function sendCustomerPortalEmail(email: string, lang: Lang, portalU
     },
   });
   if (error) throw new Error(`[resend] sendCustomerPortalEmail: ${error.message}`);
+}
+
+const WELCOME_TEMPLATE_ID: Record<SubscriptionPlan, Record<Lang, string>> = {
+  basic: {
+    en: process.env.RESEND_WELCOME_BASIC_EN_TPL_ID!,
+    es: process.env.RESEND_WELCOME_BASIC_ES_TPL_ID!,
+    fr: process.env.RESEND_WELCOME_BASIC_FR_TPL_ID!,
+    ca: process.env.RESEND_WELCOME_BASIC_CA_TPL_ID!,
+  },
+  standard: {
+    en: process.env.RESEND_WELCOME_STANDARD_EN_TPL_ID!,
+    es: process.env.RESEND_WELCOME_STANDARD_ES_TPL_ID!,
+    fr: process.env.RESEND_WELCOME_STANDARD_FR_TPL_ID!,
+    ca: process.env.RESEND_WELCOME_STANDARD_CA_TPL_ID!,
+  },
+  premium: {
+    en: process.env.RESEND_WELCOME_PREMIUM_EN_TPL_ID!,
+    es: process.env.RESEND_WELCOME_PREMIUM_ES_TPL_ID!,
+    fr: process.env.RESEND_WELCOME_PREMIUM_FR_TPL_ID!,
+    ca: process.env.RESEND_WELCOME_PREMIUM_CA_TPL_ID!,
+  },
+};
+
+export async function sendWelcomeEmail(email: string, lang: Lang, plan: SubscriptionPlan): Promise<void> {
+  const { error } = await resendSend.emails.send({
+    to: email,
+    template: { id: WELCOME_TEMPLATE_ID[plan][lang] },
+  });
+  if (error) throw new Error(`[resend] sendWelcomeEmail: ${error.message}`);
 }
 
 const SEGMENT_ID: Record<Lang, string | undefined> = {

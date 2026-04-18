@@ -7,9 +7,20 @@ export function toStripeLocale(lang: Lang) {
   return lang === 'ca' ? 'es' : lang;
 }
 
+export const STRIPE_BASIC_PRODUCT_ID = process.env.STRIPE_BASIC_PRODUCT_ID!;
+export const STRIPE_STANDARD_PRODUCT_ID = process.env.STRIPE_STANDARD_PRODUCT_ID!;
 export const STRIPE_PREMIUM_PRODUCT_ID = process.env.STRIPE_PREMIUM_PRODUCT_ID!;
 export const STRIPE_PORTAL_CONFIG_DEFAULT = process.env.STRIPE_PORTAL_CONFIG_DEFAULT!;
 export const STRIPE_PORTAL_CONFIG_PREMIUM = process.env.STRIPE_PORTAL_CONFIG_PREMIUM!;
+
+export type SubscriptionPlan = Plan | 'premium';
+
+export function getPlanFromProductId(productId: string): SubscriptionPlan | null {
+  if (productId === STRIPE_BASIC_PRODUCT_ID) return 'basic';
+  if (productId === STRIPE_STANDARD_PRODUCT_ID) return 'standard';
+  if (productId === STRIPE_PREMIUM_PRODUCT_ID) return 'premium';
+  return null;
+}
 
 export const VALID_PLANS = ['basic', 'standard'] as const;
 export type Plan = typeof VALID_PLANS[number];

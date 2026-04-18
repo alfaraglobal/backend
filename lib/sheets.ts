@@ -83,10 +83,12 @@ export async function appendStudentRow(token: string, payload: {
 export async function appendCeuVerificationRow(payload: {
   name: string;
   email: string;
+  lang: string;
   documentUrl: string;
   documentUrlExpiry: string;
   fileName: string;
   authenticatedUrl: string;
+  phone?: string;
 }): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
   const timestamp = new Date().toISOString();
@@ -100,6 +102,8 @@ export async function appendCeuVerificationRow(payload: {
         timestamp,
         payload.name,
         payload.email,
+        payload.phone ?? '',
+        payload.lang,
         payload.documentUrl,
         payload.documentUrlExpiry,
         payload.fileName,
