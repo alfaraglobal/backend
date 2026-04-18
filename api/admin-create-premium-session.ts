@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await Promise.all([
       redis.set(`premium_token:${token}`, { email, name, lang, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
-      redis.set(`premium_form_token:${formToken}`, { name, email }, { ex: PREMIUM_TOKEN_TTL }),
+      redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
     ]);
 
     const monthlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=monthly`;

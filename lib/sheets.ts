@@ -56,7 +56,6 @@ export async function appendStudentRow(token: string, payload: {
   home_vibe?: string;
   daily_rhythm?: string;
   comments?: string;
-  newsletter: boolean;
 }): Promise<void> {
   await appendRow(TAB_STUDENT, token, [
     payload.lang,
@@ -74,8 +73,6 @@ export async function appendStudentRow(token: string, payload: {
     payload.home_vibe ?? '',
     payload.daily_rhythm ?? '',
     payload.comments ?? '',
-    payload.newsletter,
-    '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
 }
