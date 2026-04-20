@@ -16,7 +16,6 @@ const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_PHONE = 25;
 
 interface ParsedForm {
-  name: string;
   email: string;
   phone: string;
   lang: string;
@@ -30,7 +29,6 @@ interface ParsedForm {
 function parseForm(req: VercelRequest): Promise<ParsedForm> {
   return new Promise((resolve, reject) => {
     const result: ParsedForm = {
-      name: '',
       email: '',
       phone: '',
       lang: '',
@@ -47,7 +45,6 @@ function parseForm(req: VercelRequest): Promise<ParsedForm> {
     });
 
     bb.on('field', (key, val) => {
-      if (key === 'name') result.name = val.trim();
       if (key === 'email') result.email = val.trim().toLowerCase();
       if (key === 'phone') result.phone = val.trim();
       if (key === 'lang') result.lang = val.trim();
@@ -105,9 +102,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const errors: Record<string, string> = {};
 
-  if (!form.name || form.name.length < 2 || form.name.length > 100)
-    errors.name = 'minChars';
-
   if (!form.email || form.email.length > 254 || !isEmail(form.email))
     errors.email = 'invalidEmail';
 
@@ -138,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { url: documentUrl, expiry: documentUrlExpiry, authenticatedUrl } = await uploadVerificationDoc(fileName, form.fileMimeType, form.fileBuffer!);
-    await appendCeuVerificationRow({ name: form.name, email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone.replace(/\s/g, '') } : {}) });
+    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone.replace(/\s/g, '') } : {}) });
     await setCooldown(cooldownKey, 60 * 60 * 24); // 24 hours
   } catch (err) {
     console.error('[ceu-verification] error:', err);

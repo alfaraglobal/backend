@@ -78,7 +78,6 @@ export async function appendStudentRow(token: string, payload: {
 }
 
 export async function appendCeuVerificationRow(payload: {
-  name: string;
   email: string;
   lang: string;
   documentUrl: string;
@@ -97,7 +96,6 @@ export async function appendCeuVerificationRow(payload: {
     requestBody: {
       values: [[
         timestamp,
-        payload.name,
         payload.email,
         payload.phone ?? '',
         payload.lang,
