@@ -101,7 +101,7 @@ export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: 
         NAME: name,
         MONTHLY_URL: monthlyUrl,
         YEARLY_URL: yearlyUrl,
-        FORM_URL: `${SITE_URL}${langPrefix}/student-housing-form?token=${formToken}`,
+        FORM_URL: `${SITE_URL}${langPrefix}/housing/student-form?token=${formToken}`,
       },
     },
   });
