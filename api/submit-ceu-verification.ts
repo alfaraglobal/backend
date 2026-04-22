@@ -6,15 +6,19 @@ import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/
 import { ceuVerificationLimiter, checkRateLimit, isOnCooldown, setCooldown, hashEmail } from '../lib/ratelimit';
 import { uploadVerificationDoc } from '../lib/gcs';
 import { appendCeuVerificationRow } from '../lib/sheets';
+import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — stays under Vercel's 4.5MB body limit
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
+const MAX_PHONE = 25;
+
 interface ParsedForm {
-  name: string;
   email: string;
+  phone: string;
+  lang: string;
   fileBuffer: Buffer | null;
   fileName: string;
   fileMimeType: string;
@@ -25,8 +29,9 @@ interface ParsedForm {
 function parseForm(req: VercelRequest): Promise<ParsedForm> {
   return new Promise((resolve, reject) => {
     const result: ParsedForm = {
-      name: '',
       email: '',
+      phone: '',
+      lang: '',
       fileBuffer: null,
       fileName: '',
       fileMimeType: '',
@@ -36,12 +41,13 @@ function parseForm(req: VercelRequest): Promise<ParsedForm> {
 
     const bb = busboy({
       headers: req.headers,
-      limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 2 },
+      limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 4 },
     });
 
     bb.on('field', (key, val) => {
-      if (key === 'name') result.name = val.trim();
       if (key === 'email') result.email = val.trim().toLowerCase();
+      if (key === 'phone') result.phone = val.trim();
+      if (key === 'lang') result.lang = val.trim();
     });
 
     bb.on('file', (field, stream, info) => {
@@ -96,11 +102,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const errors: Record<string, string> = {};
 
-  if (!form.name || form.name.length < 2 || form.name.length > 100)
-    errors.name = 'minChars';
-
   if (!form.email || form.email.length > 254 || !isEmail(form.email))
     errors.email = 'invalidEmail';
+
+  if (form.phone) {
+    const normalized = form.phone.replace(/\s/g, '');
+    const digits = normalized.replace(/\D/g, '');
+    if (form.phone.length > MAX_PHONE || !/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
+      errors.phone = 'invalidPhone';
+  }
 
   if (form.invalidMimeType)
     errors.document = 'invalidType';
@@ -112,6 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (Object.keys(errors).length > 0)
     return res.status(400).json({ ok: false, errors });
 
+  const lang: Lang = VALID_LANGS.includes(form.lang as Lang) ? form.lang as Lang : 'en';
+
   const cooldownKey = `ceu:cooldown:${hashEmail(form.email)}`;
   if (await isOnCooldown(cooldownKey)) return res.status(200).json({ ok: true });
 
@@ -120,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { url: documentUrl, expiry: documentUrlExpiry, authenticatedUrl } = await uploadVerificationDoc(fileName, form.fileMimeType, form.fileBuffer!);
-    await appendCeuVerificationRow({ name: form.name, email: form.email, documentUrl, documentUrlExpiry, fileName, authenticatedUrl });
+    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone.replace(/\s/g, '') } : {}) });
     await setCooldown(cooldownKey, 60 * 60 * 24); // 24 hours
   } catch (err) {
     console.error('[ceu-verification] error:', err);

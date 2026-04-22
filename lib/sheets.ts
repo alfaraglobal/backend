@@ -56,7 +56,6 @@ export async function appendStudentRow(token: string, payload: {
   home_vibe?: string;
   daily_rhythm?: string;
   comments?: string;
-  newsletter: boolean;
 }): Promise<void> {
   await appendRow(TAB_STUDENT, token, [
     payload.lang,
@@ -74,19 +73,18 @@ export async function appendStudentRow(token: string, payload: {
     payload.home_vibe ?? '',
     payload.daily_rhythm ?? '',
     payload.comments ?? '',
-    payload.newsletter,
-    '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
 }
 
 export async function appendCeuVerificationRow(payload: {
-  name: string;
   email: string;
+  lang: string;
   documentUrl: string;
   documentUrlExpiry: string;
   fileName: string;
   authenticatedUrl: string;
+  phone?: string;
 }): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
   const timestamp = new Date().toISOString();
@@ -98,8 +96,9 @@ export async function appendCeuVerificationRow(payload: {
     requestBody: {
       values: [[
         timestamp,
-        payload.name,
         payload.email,
+        payload.phone ?? '',
+        payload.lang,
         payload.documentUrl,
         payload.documentUrlExpiry,
         payload.fileName,

@@ -1,15 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
-import { studentLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
-import { sendStudentConfirmationEmail } from '../lib/resend';
+import { studentLimiter, checkRateLimit, redis } from '../lib/ratelimit';
+import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
-
-const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
-const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
 
 const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, nationality: 100, comments: 2000 };
 const BUDGET_MIN = 200;
@@ -118,10 +114,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (Object.keys(errors).length > 0)
     return res.status(400).json({ ok: false, errors });
 
-  const alreadyConfirmed = await redis.get(`sl:confirmed:${hashEmail(email)}`);
-  if (alreadyConfirmed) return res.status(200).json({ ok: true });
+  // — Payload —
 
-  // — Cleaning —
+  const lang: Lang = VALID_LANGS.includes(b.lang) ? b.lang : 'en';
 
   const payload = {
     name: b.name.trim(),
@@ -133,31 +128,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     accommodation_type: b.accommodation_type as AccommodationType,
     location_preference: b.location_preference as LocationPreference,
     budget,
-    newsletter: b.newsletter === true,
-    lang: (VALID_LANGS.includes(req.body?.lang) ? req.body.lang : 'en') as Lang,
+    lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
-    ...(b.phone ? { phone: b.phone as string } : {}),
+    ...(b.phone ? { phone: (b.phone as string).replace(/\s/g, '') } : {}),
     ...(b.home_vibe ? { home_vibe: b.home_vibe as HomeVibe } : {}),
     ...(b.daily_rhythm ? { daily_rhythm: b.daily_rhythm as DailyRhythm } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 
-  if (await isOnCooldown(`sl:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
+  // — Token validation —
 
-  const rawLang = req.body?.lang;
-  const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
+  const formToken = typeof b.formToken === 'string' ? b.formToken : null;
+  if (!formToken) return res.status(403).json({ error: 'forbidden' });
 
-  const token = randomUUID();
-  await redis.set(`sl:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
-  await setCooldown(`sl:cooldown:${hashEmail(email)}`, EMAIL_COOLDOWN_SECONDS);
+  const tokenPayload = await redis.get<{ name: string; email: string; phone?: string }>(`premium_form_token:${formToken}`);
+  if (!tokenPayload || tokenPayload.email !== email) return res.status(403).json({ error: 'forbidden' });
+  if (tokenPayload.phone && payload.phone !== tokenPayload.phone) return res.status(403).json({ error: 'forbidden' });
 
-  const newsletter = b.newsletter === true;
+  // — Append —
+
   try {
-    await sendStudentConfirmationEmail(email, lang, token, payload, newsletter);
+    await appendStudentRow(formToken, payload);
   } catch (err) {
-    console.error('[student-form] email send failed:', err);
-    await redis.del(`sl:pending:${token}`);
-    await redis.del(`sl:cooldown:${hashEmail(email)}`);
+    console.error('[student-form] append failed:', err);
     return res.status(500).json({ error: 'server-error' });
   }
 

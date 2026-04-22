@@ -12,13 +12,6 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-// 5 requests per IP per 10 minutes
-export const newsletterLimiter = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5, '10 m'),
-  prefix: 'rl:newsletter',
-});
-
 // 3 requests per IP per 10 minutes
 export const landlordLimiter = new Ratelimit({
   redis,
@@ -52,6 +45,20 @@ export const confirmLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(10, '10 m'),
   prefix: 'rl:confirm',
+});
+
+// 5 requests per IP per 10 minutes
+export const portalLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '10 m'),
+  prefix: 'rl:portal',
+});
+
+// 5 requests per IP per 10 minutes
+export const checkoutLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '10 m'),
+  prefix: 'rl:checkout',
 });
 
 export async function isOnCooldown(key: string): Promise<boolean> {
