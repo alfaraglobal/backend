@@ -1,7 +1,9 @@
 import Stripe from 'stripe';
 import type { Lang } from './config';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  timeout: Number(process.env.STRIPE_TIMEOUT_MS ?? 5000),
+});
 
 export function toStripeLocale(lang: Lang) {
   return lang === 'ca' ? 'es' : lang;
@@ -24,6 +26,12 @@ export function getPlanFromProductId(productId: string): SubscriptionPlan | null
 
 export const VALID_PLANS = ['basic', 'standard'] as const;
 export type Plan = typeof VALID_PLANS[number];
+
+export const PAYMENT_STATUSES = ['active', 'failing', 'canceled'] as const;
+export type PaymentStatus = typeof PAYMENT_STATUSES[number];
+
+export type WhatsappStatus = 'false' | 'true' | '';
+export type WhatsappRemoval = 'true' | 'false';
 
 export const VALID_BILLINGS = ['monthly', 'yearly'] as const;
 export type Billing = typeof VALID_BILLINGS[number];
