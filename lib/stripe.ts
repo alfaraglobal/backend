@@ -25,6 +25,12 @@ export function getPlanFromProductId(productId: string): SubscriptionPlan | null
 export const VALID_PLANS = ['basic', 'standard'] as const;
 export type Plan = typeof VALID_PLANS[number];
 
+export const PAYMENT_STATUSES = ['active', 'failing', 'canceled'] as const;
+export type PaymentStatus = typeof PAYMENT_STATUSES[number];
+
+export type WhatsappStatus = 'false' | 'true' | '';
+export type WhatsappRemoval = 'true' | 'false';
+
 export const VALID_BILLINGS = ['monthly', 'yearly'] as const;
 export type Billing = typeof VALID_BILLINGS[number];
 
