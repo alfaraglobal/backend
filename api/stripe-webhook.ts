@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await stripe.customers.update(customerId, {
           metadata: {
             ...(email ? { email } : {}),
-            ...(phone ? { phone } : {}),
+            ...(phone ? { phone, added_to_whatsapp: 'false' } : {}),
             ...(language ? { language } : {}),
           },
         });
