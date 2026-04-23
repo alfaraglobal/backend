@@ -53,10 +53,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
       if (subscriptionId && email) {
         try {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const [subscription, allSubs] = await Promise.all([
+            stripe.subscriptions.retrieve(subscriptionId),
+            stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 2 }),
+          ]);
           const productId = subscription.items.data[0]?.price.product as string;
           const plan = getPlanFromProductId(productId);
-          if (plan) await sendWelcomeEmail(email, lang, plan);
+          const isFirstSubscription = allSubs.data.length === 1;
+          if (plan && isFirstSubscription) await sendWelcomeEmail(email, lang, plan);
         } catch (err) {
           console.error('[stripe-webhook] failed to send welcome email:', err);
         }
