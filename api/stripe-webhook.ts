@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval } from '../lib/stripe';
-import { sendWelcomeEmail } from '../lib/resend';
+import { sendWelcomeEmail, sendUpgradeToStandardEmail, sendDowngradeToBasicEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -9,6 +9,8 @@ type StripeEvent = ReturnType<typeof stripe.webhooks.constructEvent>;
 type CheckoutSession = Extract<StripeEvent, { type: 'checkout.session.completed' }>['data']['object'];
 type Invoice = Extract<StripeEvent, { type: 'invoice.paid' }>['data']['object'];
 type Subscription = Extract<StripeEvent, { type: 'customer.subscription.deleted' }>['data']['object'];
+type SubscriptionUpdatedData = Extract<StripeEvent, { type: 'customer.subscription.updated' }>['data'];
+type SubscriptionUpdated = SubscriptionUpdatedData['object'];
 
 function getRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -96,7 +98,6 @@ async function onInvoicePaid(invoice: Invoice) {
 
 async function onSubscriptionDeleted(subscription: Subscription) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
-  if (!customerId) return;
 
   const productId = subscription.items.data[0]?.price.product as string;
   const plan = getPlanFromProductId(productId);
@@ -111,6 +112,60 @@ async function onSubscriptionDeleted(subscription: Subscription) {
     });
   } catch (err) {
     console.error('[stripe-webhook] failed to update metadata on subscription deletion:', err);
+  }
+}
+
+async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previousAttributes: SubscriptionUpdatedData['previous_attributes']) {
+  if (!previousAttributes?.items) return;
+
+  const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+
+  const newProductId = subscription.items.data[0]?.price.product as string;
+  const oldProductId = previousAttributes.items.data[0]?.price.product as string;
+  const newPlan = getPlanFromProductId(newProductId);
+  const oldPlan = getPlanFromProductId(oldProductId);
+
+  const isUpgrade = oldPlan === 'basic' && newPlan === 'standard';
+  const isDowngrade = oldPlan === 'standard' && newPlan === 'basic';
+  if (!isUpgrade && !isDowngrade) return;
+
+  let customer;
+  try {
+    customer = await stripe.customers.retrieve(customerId);
+  } catch (err) {
+    console.error('[stripe-webhook] failed to retrieve customer:', err);
+    throw err;
+  }
+  if ('deleted' in customer) return;
+
+  const email = customer.metadata?.['email'] as string | undefined;
+  const language = customer.metadata?.['language'] as string | undefined;
+  const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+
+  if (isUpgrade || isDowngrade) {
+    try {
+      await stripe.customers.update(customerId, {
+        metadata: {
+          ...(isUpgrade ? { added_to_whatsapp: '' satisfies WhatsappStatus } : {}),
+          ...(isDowngrade ? { needs_whatsapp_removal: 'true' satisfies WhatsappRemoval } : {}),
+        },
+      });
+    } catch (err) {
+      console.error('[stripe-webhook] failed to update metadata on plan change:', err);
+      throw err;
+    }
+  }
+
+  if (email) {
+    try {
+      if (isUpgrade) {
+        await sendUpgradeToStandardEmail(email, lang);
+      } else {
+        await sendDowngradeToBasicEmail(email, lang);
+      }
+    } catch (err) {
+      console.error('[stripe-webhook] failed to send plan change email:', err);
+    }
   }
 }
 
@@ -142,6 +197,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         break;
       case 'customer.subscription.deleted':
         await onSubscriptionDeleted(event.data.object);
+        break;
+      case 'customer.subscription.updated':
+        await onSubscriptionUpdated(event.data.object, event.data.previous_attributes);
         break;
     }
   } catch (err) {

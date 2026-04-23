@@ -1,7 +1,9 @@
 import Stripe from 'stripe';
 import type { Lang } from './config';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  timeout: Number(process.env.STRIPE_TIMEOUT_MS ?? 5000),
+});
 
 export function toStripeLocale(lang: Lang) {
   return lang === 'ca' ? 'es' : lang;
