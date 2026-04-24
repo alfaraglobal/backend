@@ -6,11 +6,11 @@ import { getActiveSubscription } from '../lib/stripe';
 import { redis } from '../lib/ratelimit';
 import { sendPremiumCheckoutEmail } from '../lib/resend';
 import { VALID_LANGS, API_URL, type Lang } from '../lib/config';
+import { normalizePhone } from '../lib/validation';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
 const PREMIUM_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days
-const MAX_PHONE = 25;
 
 function checkAdminKey(req: VercelRequest): boolean {
   const key = req.headers['x-admin-key'];
@@ -44,12 +44,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let phone: string | undefined;
   if (req.body?.phone !== undefined) {
-    if (typeof req.body.phone !== 'string' || req.body.phone.length > MAX_PHONE)
-      return res.status(400).json({ error: 'invalid-phone' });
-    const normalized = req.body.phone.replace(/\s/g, '');
-    const digits = normalized.replace(/\D/g, '');
-    if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
-      return res.status(400).json({ error: 'invalid-phone' });
+    if (typeof req.body.phone !== 'string') return res.status(400).json({ error: 'invalid-phone' });
+    const normalized = normalizePhone(req.body.phone);
+    if (normalized === null) return res.status(400).json({ error: 'invalid-phone' });
     phone = normalized;
   }
 
