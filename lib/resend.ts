@@ -166,33 +166,32 @@ export async function sendWelcomeEmail(email: string, lang: Lang, plan: Subscrip
   if (error) throw new Error(`[resend] sendWelcomeEmail: ${error.message}`);
 }
 
-const UPGRADE_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
-  en: process.env.RESEND_UPGRADE_TO_STANDARD_EN_TPL_ID!,
-  es: process.env.RESEND_UPGRADE_TO_STANDARD_ES_TPL_ID!,
-  fr: process.env.RESEND_UPGRADE_TO_STANDARD_FR_TPL_ID!,
-  ca: process.env.RESEND_UPGRADE_TO_STANDARD_CA_TPL_ID!,
+const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_UPDATE_FROM_BASIC_TO_STANDARD_EN_TPL_ID!,
+  es: process.env.RESEND_UPDATE_FROM_BASIC_TO_STANDARD_ES_TPL_ID!,
+  fr: process.env.RESEND_UPDATE_FROM_BASIC_TO_STANDARD_FR_TPL_ID!,
+  ca: process.env.RESEND_UPDATE_FROM_BASIC_TO_STANDARD_CA_TPL_ID!,
 };
 
-export async function sendUpgradeToStandardEmail(email: string, lang: Lang): Promise<void> {
+export async function sendUpdateFromBasicToStandardEmail(email: string, lang: Lang): Promise<void> {
   const { error } = await resendSend.emails.send({
     to: email,
-    template: { id: UPGRADE_TO_STANDARD_TEMPLATE_ID[lang] },
+    template: { id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang] },
   });
-  if (error) throw new Error(`[resend] sendUpgradeToStandardEmail: ${error.message}`);
+  if (error) throw new Error(`[resend] sendUpdateFromBasicToStandardEmail: ${error.message}`);
 }
 
-const DOWNGRADE_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
-  en: process.env.RESEND_DOWNGRADE_TO_BASIC_EN_TPL_ID!,
-  es: process.env.RESEND_DOWNGRADE_TO_BASIC_ES_TPL_ID!,
-  fr: process.env.RESEND_DOWNGRADE_TO_BASIC_FR_TPL_ID!,
-  ca: process.env.RESEND_DOWNGRADE_TO_BASIC_CA_TPL_ID!,
+const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_UPDATE_FROM_STANDARD_TO_BASIC_EN_TPL_ID!,
+  es: process.env.RESEND_UPDATE_FROM_STANDARD_TO_BASIC_ES_TPL_ID!,
+  fr: process.env.RESEND_UPDATE_FROM_STANDARD_TO_BASIC_FR_TPL_ID!,
+  ca: process.env.RESEND_UPDATE_FROM_STANDARD_TO_BASIC_CA_TPL_ID!,
 };
 
-export async function sendDowngradeToBasicEmail(email: string, lang: Lang): Promise<void> {
+export async function sendUpdateFromStandardToBasicEmail(email: string, lang: Lang): Promise<void> {
   const { error } = await resendSend.emails.send({
     to: email,
-    template: { id: DOWNGRADE_TO_BASIC_TEMPLATE_ID[lang] },
+    template: { id: UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID[lang] },
   });
-  if (error) throw new Error(`[resend] sendDowngradeToBasicEmail: ${error.message}`);
+  if (error) throw new Error(`[resend] sendUpdateFromStandardToBasicEmail: ${error.message}`);
 }
-
