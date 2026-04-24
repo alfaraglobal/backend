@@ -28,8 +28,18 @@ export function checkOrigin(req: VercelRequest): string | null {
 export function setCorsHeaders(res: VercelResponse, origin: string, extraHeaders?: string[]): void {
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  const headers = ['Content-Type', ...(extraHeaders ?? [])].join(', ');
+  const headers = ['Content-Type', 'x-preview-key', ...(extraHeaders ?? [])].join(', ');
   res.setHeader('Access-Control-Allow-Headers', headers);
+}
+
+export function checkPreviewKey(req: VercelRequest, res: VercelResponse): boolean {
+  const previewKey = process.env.PREVIEW_KEY;
+  if (!previewKey) return true;
+  if (req.headers['x-preview-key'] !== previewKey) {
+    res.status(401).end('Unauthorized');
+    return false;
+  }
+  return true;
 }
 
 export function forbidden(res: VercelResponse): void {

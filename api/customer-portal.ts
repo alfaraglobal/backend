@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { portalLimiter, checkRateLimit, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { stripe, getActiveSubscription, toStripeLocale, STRIPE_PREMIUM_PRODUCT_ID, STRIPE_PORTAL_CONFIG_DEFAULT_ID, STRIPE_PORTAL_CONFIG_PREMIUM_ID } from '../lib/stripe';
 import { sendCustomerPortalEmail } from '../lib/resend';
@@ -13,6 +13,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 
