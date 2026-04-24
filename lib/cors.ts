@@ -1,28 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const DOMAIN = 'alfaraglobal.com';
-
-function isAllowedOrigin(origin: string): boolean {
-  try {
-    const url = new URL(origin);
-    if (url.protocol !== 'https:') return false;
-    return url.hostname === DOMAIN || url.hostname.endsWith(`.${DOMAIN}`);
-  } catch {
-    return false;
-  }
-}
-
-function getExtraOrigins(): string[] {
-  const extra = process.env.ALLOWED_ORIGINS ?? '';
-  return extra.split(',').map(o => o.trim()).filter(Boolean);
+function getAllowedOrigins(): string[] {
+  const raw = process.env.ALLOWED_ORIGINS ?? '';
+  return raw.split(',').map(o => o.trim()).filter(Boolean);
 }
 
 export function checkOrigin(req: VercelRequest): string | null {
   const origin = req.headers['origin'];
   if (!origin || Array.isArray(origin)) return null;
-  if (isAllowedOrigin(origin)) return origin;
-  if (getExtraOrigins().includes(origin)) return origin;
-  return null;
+  if (process.env.NODE_ENV === 'development') return origin;
+  return getAllowedOrigins().includes(origin) ? origin : null;
 }
 
 export function setCorsHeaders(res: VercelResponse, origin: string, extraHeaders?: string[]): void {
