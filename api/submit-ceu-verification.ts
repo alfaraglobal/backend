@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import busboy from 'busboy';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { ceuVerificationLimiter, checkRateLimit, isOnCooldown, setCooldown, hashEmail } from '../lib/ratelimit';
 import { uploadVerificationDoc } from '../lib/gcs';
 import { appendCeuVerificationRow } from '../lib/sheets';
@@ -90,6 +90,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 

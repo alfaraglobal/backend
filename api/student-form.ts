@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { studentLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
@@ -34,6 +34,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 
