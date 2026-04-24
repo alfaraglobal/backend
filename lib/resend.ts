@@ -181,7 +181,14 @@ const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 export async function sendUpdateFromBasicToStandardEmail(email: string, lang: Lang): Promise<void> {
-  await sendEmail('sendUpdateFromBasicToStandardEmail', { to: email, template: { id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang] } });
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+  await sendEmail('sendUpdateFromBasicToStandardEmail', {
+    to: email,
+    template: {
+      id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang],
+      variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription` },
+    },
+  });
 }
 
 const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
