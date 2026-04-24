@@ -28,8 +28,7 @@ export function checkOrigin(req: VercelRequest): string | null {
 export function setCorsHeaders(res: VercelResponse, origin: string, extraHeaders?: string[]): void {
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  const previewHeader = process.env.PREVIEW_KEY ? ['x-preview-key'] : [];
-  const headers = ['Content-Type', ...previewHeader, ...(extraHeaders ?? [])].join(', ');
+  const headers = ['Content-Type', 'x-preview-key', ...(extraHeaders ?? [])].join(', ');
   res.setHeader('Access-Control-Allow-Headers', headers);
 }
 
