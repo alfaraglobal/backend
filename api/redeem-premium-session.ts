@@ -32,12 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existing) return res.redirect(`${SITE_URL}/status?type=500`);
 
     const customers = await stripe.customers.list({ email: payload.email, limit: 1 });
+    const phoneField = payload.phone ? { phone: payload.phone } : {};
     const customer = customers.data.length > 0
-      ? await stripe.customers.update(customers.data[0].id, { name: payload.name })
-      : await stripe.customers.create({ email: payload.email, name: payload.name });
+      ? await stripe.customers.update(customers.data[0].id, { name: payload.name, ...phoneField })
+      : await stripe.customers.create({ email: payload.email, name: payload.name, ...phoneField });
 
     const contactMetadata = {
-      email: payload.email,
       language: payload.lang,
       ...(payload.phone ? { phone: payload.phone } : {}),
     };

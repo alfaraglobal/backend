@@ -194,3 +194,14 @@ const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
 export async function sendUpdateFromStandardToBasicEmail(email: string, lang: Lang): Promise<void> {
   await sendEmail('sendUpdateFromStandardToBasicEmail', { to: email, template: { id: UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID[lang] } });
 }
+
+const PHONE_NUMBER_COMPLETE_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_PHONE_NUMBER_COMPLETE_EN_TPL_ID!,
+  es: process.env.RESEND_PHONE_NUMBER_COMPLETE_ES_TPL_ID!,
+  fr: process.env.RESEND_PHONE_NUMBER_COMPLETE_FR_TPL_ID!,
+  ca: process.env.RESEND_PHONE_NUMBER_COMPLETE_CA_TPL_ID!,
+};
+
+export async function sendPhoneNumberCompleteEmail(email: string, lang: Lang): Promise<void> {
+  await sendEmail('sendPhoneNumberCompleteEmail', { to: email, template: { id: PHONE_NUMBER_COMPLETE_TEMPLATE_ID[lang] } });
+}

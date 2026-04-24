@@ -4,10 +4,11 @@ import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKe
 import { studentLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
+import { normalizePhone } from '../lib/validation';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
-const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, nationality: 100, comments: 2000 };
+const MAX = { name: 50, middleName: 50, surname: 50, email: 254, nationality: 100, comments: 2000 };
 const BUDGET_MIN = 200;
 const BUDGET_MAX = 2500;
 
@@ -58,14 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!email || email.length > MAX.email || !isEmail(email))
     errors.email = 'invalidEmail';
 
+  let phone: string | undefined;
   if (b.phone !== undefined) {
-    if (typeof b.phone !== 'string' || b.phone.length > MAX.phone) {
+    if (typeof b.phone !== 'string') {
       errors.phone = 'invalidPhone';
     } else {
-      const normalized = b.phone.replace(/\s/g, '');
-      const digits = normalized.replace(/\D/g, '');
-      if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
-        errors.phone = 'invalidPhone';
+      const normalized = normalizePhone(b.phone);
+      if (normalized === null) errors.phone = 'invalidPhone';
+      else phone = normalized;
     }
   }
 
@@ -132,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     budget,
     lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
-    ...(b.phone ? { phone: (b.phone as string).replace(/\s/g, '') } : {}),
+    ...(phone ? { phone } : {}),
     ...(b.home_vibe ? { home_vibe: b.home_vibe as HomeVibe } : {}),
     ...(b.daily_rhythm ? { daily_rhythm: b.daily_rhythm as DailyRhythm } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),

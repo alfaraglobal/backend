@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval } from '../lib/stripe';
-import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail } from '../lib/resend';
+import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated } from '../lib/stripe';
+import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -11,6 +11,8 @@ type Invoice = Extract<StripeEvent, { type: 'invoice.paid' }>['data']['object'];
 type Subscription = Extract<StripeEvent, { type: 'customer.subscription.deleted' }>['data']['object'];
 type SubscriptionUpdatedData = Extract<StripeEvent, { type: 'customer.subscription.updated' }>['data'];
 type SubscriptionUpdated = SubscriptionUpdatedData['object'];
+type CustomerUpdatedData = Extract<StripeEvent, { type: 'customer.updated' }>['data'];
+type CustomerUpdated = CustomerUpdatedData['object'];
 
 function getRawBody(req: VercelRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -25,7 +27,8 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
   if (!customerId || !session.metadata) return;
 
-  const { email, phone, language } = session.metadata;
+  const { phone, language } = session.metadata;
+  const email = session.customer_details?.email ?? undefined;
   const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
 
   const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
@@ -51,13 +54,13 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
 
   try {
     await stripe.customers.update(customerId, {
+      ...(phone ? { phone } : {}),
       metadata: {
         payment_status: 'active' satisfies PaymentStatus,
         needs_whatsapp_removal: 'false' satisfies WhatsappRemoval,
-        ...(email ? { email } : {}),
-        ...(phone ? { phone } : {}),
         ...(whatsappStatus !== null ? { added_to_whatsapp: whatsappStatus } : {}),
         ...(language ? { language } : {}),
+        ...(phone ? { whatsapp_number: phone } : {}),
       },
     });
   } catch (err) {
@@ -147,7 +150,7 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
   }
   if ('deleted' in customer) return;
 
-  const email = customer.metadata?.['email'] as string | undefined;
+  const email = customer.email ?? undefined;
   const language = customer.metadata?.['language'] as string | undefined;
   const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
 
@@ -174,6 +177,66 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
       }
     } catch (err) {
       console.error('[stripe-webhook] failed to send plan change email:', err);
+    }
+  }
+}
+
+async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: CustomerUpdatedData['previous_attributes']) {
+  if (!previousAttributes || !('phone' in previousAttributes)) return;
+
+  const previousPhone = previousAttributes.phone ?? null;
+  const currentPhone = customer.phone ?? null;
+  if (!currentPhone || currentPhone === previousPhone) return;
+
+  let subscriptions;
+  try {
+    subscriptions = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 1 });
+  } catch (err) {
+    console.error('[stripe-webhook] failed to list subscriptions on customer.updated:', err);
+    throw err;
+  }
+
+  const sub = subscriptions.data[0];
+  if (!sub) return;
+
+  const plan = getPlanFromProductId(sub.items.data[0]?.price.product as string);
+  if (plan !== 'standard' && plan !== 'premium') return;
+
+  const language = customer.metadata?.['language'] as string | undefined;
+  const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+  const email = customer.email ?? undefined;
+
+  if (!previousPhone) {
+    // First-time phone addition via portal — guard against checkout-triggered updates
+    if (customer.metadata?.['whatsapp_number']) return;
+
+    try {
+      await stripe.customers.update(customer.id, {
+        metadata: {
+          added_to_whatsapp: 'false' satisfies WhatsappStatus,
+          whatsapp_number: currentPhone,
+        },
+      });
+    } catch (err) {
+      console.error('[stripe-webhook] failed to update metadata on first phone addition:', err);
+      throw err;
+    }
+
+    if (email) {
+      try {
+        await sendPhoneNumberCompleteEmail(email, lang);
+      } catch (err) {
+        console.error('[stripe-webhook] failed to send phone number complete email:', err);
+      }
+    }
+  } else {
+    // Phone changed — flag for manual review
+    try {
+      await stripe.customers.update(customer.id, {
+        metadata: { whatsapp_number_outdated: 'true' satisfies WhatsappNumberOutdated },
+      });
+    } catch (err) {
+      console.error('[stripe-webhook] failed to set whatsapp_number_outdated:', err);
     }
   }
 }
@@ -209,6 +272,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         break;
       case 'customer.subscription.updated':
         await onSubscriptionUpdated(event.data.object, event.data.previous_attributes);
+        break;
+      case 'customer.updated':
+        await onCustomerUpdated(event.data.object, event.data.previous_attributes);
         break;
     }
   } catch (err) {
