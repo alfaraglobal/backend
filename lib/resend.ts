@@ -170,7 +170,14 @@ const WELCOME_TEMPLATE_ID: Record<SubscriptionPlan, Record<Lang, string>> = {
 };
 
 export async function sendWelcomeEmail(email: string, lang: Lang, plan: SubscriptionPlan): Promise<void> {
-  await sendEmail('sendWelcomeEmail', { to: email, template: { id: WELCOME_TEMPLATE_ID[plan][lang] } });
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+  await sendEmail('sendWelcomeEmail', {
+    to: email,
+    template: {
+      id: WELCOME_TEMPLATE_ID[plan][lang],
+      ...(plan === 'standard' || plan === 'premium' ? { variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription` } } : {}),
+    },
+  });
 }
 
 const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
@@ -181,7 +188,14 @@ const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 export async function sendUpdateFromBasicToStandardEmail(email: string, lang: Lang): Promise<void> {
-  await sendEmail('sendUpdateFromBasicToStandardEmail', { to: email, template: { id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang] } });
+  const langPrefix = lang === 'en' ? '' : `/${lang}`;
+  await sendEmail('sendUpdateFromBasicToStandardEmail', {
+    to: email,
+    template: {
+      id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang],
+      variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription` },
+    },
+  });
 }
 
 const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
