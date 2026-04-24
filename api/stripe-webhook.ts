@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval } from '../lib/stripe';
-import { sendWelcomeEmail, sendUpgradeToStandardEmail, sendDowngradeToBasicEmail } from '../lib/resend';
+import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -159,9 +159,9 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
   if (email) {
     try {
       if (isUpgrade) {
-        await sendUpgradeToStandardEmail(email, lang);
+        await sendUpdateFromBasicToStandardEmail(email, lang);
       } else {
-        await sendDowngradeToBasicEmail(email, lang);
+        await sendUpdateFromStandardToBasicEmail(email, lang);
       }
     } catch (err) {
       console.error('[stripe-webhook] failed to send plan change email:', err);
