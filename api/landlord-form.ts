@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { landlordLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { sendLandlordConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang, RENTAL_TYPES, type RentalType } from '../lib/config';
@@ -18,6 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 

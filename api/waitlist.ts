@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { waitlistLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { appendWaitlistRow } from '../lib/sheets';
 
@@ -13,6 +13,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { confirmLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -7,6 +7,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin)) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
 
@@ -17,8 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = typeof req.query.token === 'string' ? req.query.token : null;
   if (!token) return res.status(400).end();
 
-  const devAuthToken = process.env.DEV_AUTH_TOKEN;
-  if (devAuthToken && token === devAuthToken) {
+  if (process.env.NODE_ENV === 'development' && token === process.env.DEV_AUTH_TOKEN) {
     return res.status(200).json({ name: 'Dev User', email: 'dev@localhost' });
   }
 

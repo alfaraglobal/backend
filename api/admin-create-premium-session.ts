@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomBytes } from 'crypto';
 import { isEmail } from 'validator';
-import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
+import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { getActiveSubscription } from '../lib/stripe';
 import { redis } from '../lib/ratelimit';
 import { sendPremiumCheckoutEmail } from '../lib/resend';
@@ -22,6 +22,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!origin) return forbidden(res);
 
   if (handlePreflight(req, res, origin, ['x-admin-key'])) return;
+
+  if (!checkPreviewKey(req, res)) return;
 
   if (!checkAdminKey(req)) return res.status(403).end('Forbidden');
 
