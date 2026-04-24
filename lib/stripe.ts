@@ -12,8 +12,8 @@ export function toStripeLocale(lang: Lang) {
 export const STRIPE_BASIC_PRODUCT_ID = process.env.STRIPE_BASIC_PRODUCT_ID!;
 export const STRIPE_STANDARD_PRODUCT_ID = process.env.STRIPE_STANDARD_PRODUCT_ID!;
 export const STRIPE_PREMIUM_PRODUCT_ID = process.env.STRIPE_PREMIUM_PRODUCT_ID!;
-export const STRIPE_PORTAL_CONFIG_DEFAULT = process.env.STRIPE_PORTAL_CONFIG_DEFAULT!;
-export const STRIPE_PORTAL_CONFIG_PREMIUM = process.env.STRIPE_PORTAL_CONFIG_PREMIUM!;
+export const STRIPE_PORTAL_CONFIG_DEFAULT_ID = process.env.STRIPE_PORTAL_CONFIG_DEFAULT_ID!;
+export const STRIPE_PORTAL_CONFIG_PREMIUM_ID = process.env.STRIPE_PORTAL_CONFIG_PREMIUM_ID!;
 
 export type SubscriptionPlan = Plan | 'premium';
 
