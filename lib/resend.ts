@@ -17,6 +17,20 @@ export interface LandlordPayload {
 
 const resendSend = new Resend(process.env.RESEND_SEND_KEY!);
 
+interface EmailPayload {
+  to: string;
+  template: { id: string; variables?: Record<string, string | number> };
+}
+
+async function sendEmail(label: string, payload: EmailPayload): Promise<void> {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[resend:dev] ${label}`, { to: payload.to, templateId: payload.template.id, variables: payload.template.variables });
+    return;
+  }
+  const { error } = await resendSend.emails.send(payload);
+  if (error) throw new Error(`[resend] ${label}: ${error.message}`);
+}
+
 // When additional language templates are created, map them here
 const LANDLORD_TEMPLATE_ID: Record<Lang, string> = {
   en: process.env.RESEND_LANDLORD_EN_TPL_ID!,
@@ -62,7 +76,7 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
   const rentalType = payload.rental_type.map(t => RENTAL_TYPE_LABELS[lang][t]).join(', ');
 
-  const { error } = await resendSend.emails.send({
+  await sendEmail('sendLandlordConfirmationEmail', {
     to: email,
     template: {
       id: LANDLORD_TEMPLATE_ID[lang],
@@ -80,7 +94,6 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
       },
     },
   });
-  if (error) throw new Error(`[resend] sendLandlordConfirmationEmail: ${error.message}`);
 }
 
 const PREMIUM_CHECKOUT_TEMPLATE_ID: Record<Lang, string> = {
@@ -93,7 +106,7 @@ const PREMIUM_CHECKOUT_TEMPLATE_ID: Record<Lang, string> = {
 export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: string, monthlyUrl: string, yearlyUrl: string, formToken: string): Promise<void> {
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
-  const { error } = await resendSend.emails.send({
+  await sendEmail('sendPremiumCheckoutEmail', {
     to: email,
     template: {
       id: PREMIUM_CHECKOUT_TEMPLATE_ID[lang],
@@ -105,7 +118,6 @@ export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: 
       },
     },
   });
-  if (error) throw new Error(`[resend] sendPremiumCheckoutEmail: ${error.message}`);
 }
 
 const CUSTOMER_PORTAL_DEFAULT_TEMPLATE_ID: Record<Lang, string> = {
@@ -127,14 +139,13 @@ export async function sendCustomerPortalEmail(email: string, lang: Lang, portalU
     ? CUSTOMER_PORTAL_PREMIUM_TEMPLATE_ID[lang]
     : CUSTOMER_PORTAL_DEFAULT_TEMPLATE_ID[lang];
 
-  const { error } = await resendSend.emails.send({
+  await sendEmail('sendCustomerPortalEmail', {
     to: email,
     template: {
       id: templateId,
       variables: { PORTAL_URL: portalUrl },
     },
   });
-  if (error) throw new Error(`[resend] sendCustomerPortalEmail: ${error.message}`);
 }
 
 const WELCOME_TEMPLATE_ID: Record<SubscriptionPlan, Record<Lang, string>> = {
@@ -159,11 +170,7 @@ const WELCOME_TEMPLATE_ID: Record<SubscriptionPlan, Record<Lang, string>> = {
 };
 
 export async function sendWelcomeEmail(email: string, lang: Lang, plan: SubscriptionPlan): Promise<void> {
-  const { error } = await resendSend.emails.send({
-    to: email,
-    template: { id: WELCOME_TEMPLATE_ID[plan][lang] },
-  });
-  if (error) throw new Error(`[resend] sendWelcomeEmail: ${error.message}`);
+  await sendEmail('sendWelcomeEmail', { to: email, template: { id: WELCOME_TEMPLATE_ID[plan][lang] } });
 }
 
 const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
@@ -174,11 +181,7 @@ const UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 export async function sendUpdateFromBasicToStandardEmail(email: string, lang: Lang): Promise<void> {
-  const { error } = await resendSend.emails.send({
-    to: email,
-    template: { id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang] },
-  });
-  if (error) throw new Error(`[resend] sendUpdateFromBasicToStandardEmail: ${error.message}`);
+  await sendEmail('sendUpdateFromBasicToStandardEmail', { to: email, template: { id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang] } });
 }
 
 const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
@@ -189,9 +192,5 @@ const UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID: Record<Lang, string> = {
 };
 
 export async function sendUpdateFromStandardToBasicEmail(email: string, lang: Lang): Promise<void> {
-  const { error } = await resendSend.emails.send({
-    to: email,
-    template: { id: UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID[lang] },
-  });
-  if (error) throw new Error(`[resend] sendUpdateFromStandardToBasicEmail: ${error.message}`);
+  await sendEmail('sendUpdateFromStandardToBasicEmail', { to: email, template: { id: UPDATE_FROM_STANDARD_TO_BASIC_TEMPLATE_ID[lang] } });
 }
