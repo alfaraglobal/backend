@@ -99,6 +99,15 @@ async function onInvoicePaid(invoice: Invoice) {
 async function onSubscriptionDeleted(subscription: Subscription) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
 
+  let customer;
+  try {
+    customer = await stripe.customers.retrieve(customerId);
+  } catch (err) {
+    console.error('[stripe-webhook] failed to retrieve customer on subscription deletion:', err);
+    return;
+  }
+  if ('deleted' in customer) return;
+
   const productId = subscription.items.data[0]?.price.product as string;
   const plan = getPlanFromProductId(productId);
   const isWhatsappPlan = plan === 'standard' || plan === 'premium';
