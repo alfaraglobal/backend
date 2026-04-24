@@ -32,6 +32,7 @@ export type PaymentStatus = typeof PAYMENT_STATUSES[number];
 
 export type WhatsappStatus = 'false' | 'true' | '';
 export type WhatsappRemoval = 'true' | 'false';
+export type WhatsappNumberOutdated = 'true' | 'false';
 
 export const VALID_BILLINGS = ['monthly', 'yearly'] as const;
 export type Billing = typeof VALID_BILLINGS[number];

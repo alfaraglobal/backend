@@ -4,8 +4,7 @@ import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKe
 import { checkoutLimiter, checkRateLimit } from '../lib/ratelimit';
 import { stripe, getActiveSubscription, getPriceId, toStripeLocale, VALID_PLANS, VALID_BILLINGS, type Plan, type Billing } from '../lib/stripe';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
-
-const MAX_PHONE = 25;
+import { normalizePhone } from '../lib/validation';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
@@ -37,12 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let phone: string | undefined;
   if (plan === 'standard' && req.body?.phone !== undefined) {
-    if (typeof req.body.phone !== 'string' || req.body.phone.length > MAX_PHONE)
-      return res.status(400).json({ error: 'invalid-phone' });
-    const normalized = req.body.phone.replace(/\s/g, '');
-    const digits = normalized.replace(/\D/g, '');
-    if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
-      return res.status(400).json({ error: 'invalid-phone' });
+    if (typeof req.body.phone !== 'string') return res.status(400).json({ error: 'invalid-phone' });
+    const normalized = normalizePhone(req.body.phone);
+    if (normalized === null) return res.status(400).json({ error: 'invalid-phone' });
     phone = normalized;
   }
 
@@ -53,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const existing = await getActiveSubscription(email);
     if (existing) return res.status(200).json({ ok: false, error: 'already-subscribed' });
 
-    const contactMetadata = { email, language: lang, ...(phone ? { phone } : {}) };
+    const contactMetadata = { language: lang, ...(phone ? { phone } : {}) };
     const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
     const session = await stripe.checkout.sessions.create({

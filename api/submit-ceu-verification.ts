@@ -7,13 +7,12 @@ import { ceuVerificationLimiter, checkRateLimit, isOnCooldown, setCooldown, hash
 import { uploadVerificationDoc } from '../lib/gcs';
 import { appendCeuVerificationRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang } from '../lib/config';
+import { normalizePhone } from '../lib/validation';
 
 export const config = { api: { bodyParser: false } };
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — stays under Vercel's 4.5MB body limit
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-
-const MAX_PHONE = 25;
 
 interface ParsedForm {
   email: string;
@@ -108,10 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     errors.email = 'invalidEmail';
 
   if (form.phone) {
-    const normalized = form.phone.replace(/\s/g, '');
-    const digits = normalized.replace(/\D/g, '');
-    if (form.phone.length > MAX_PHONE || !/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
-      errors.phone = 'invalidPhone';
+    const normalized = normalizePhone(form.phone);
+    if (normalized === null) errors.phone = 'invalidPhone';
+    else form.phone = normalized;
   }
 
   if (form.invalidMimeType)
@@ -134,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { url: documentUrl, expiry: documentUrlExpiry, authenticatedUrl } = await uploadVerificationDoc(fileName, form.fileMimeType, form.fileBuffer!);
-    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone.replace(/\s/g, '') } : {}) });
+    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone } : {}) });
     await setCooldown(cooldownKey, 60 * 60 * 24); // 24 hours
   } catch (err) {
     console.error('[ceu-verification] error:', err);

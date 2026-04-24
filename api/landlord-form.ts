@@ -5,13 +5,14 @@ import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKe
 import { landlordLimiter, checkRateLimit, redis, hashEmail, isOnCooldown, setCooldown } from '../lib/ratelimit';
 import { sendLandlordConfirmationEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang, RENTAL_TYPES, type RentalType } from '../lib/config';
+import { normalizePhone } from '../lib/validation';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 72; // 72 hours
 const EMAIL_COOLDOWN_SECONDS = 60 * 10; // 10 minutes
 
-const MAX = { name: 50, middleName: 50, surname: 50, email: 254, phone: 25, location: 100, comments: 2000 };
+const MAX = { name: 50, middleName: 50, surname: 50, email: 254, location: 100, comments: 2000 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = checkOrigin(req);
@@ -42,14 +43,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!email || email.length > MAX.email || !isEmail(email))
     errors.email = 'invalidEmail';
 
+  let phone: string | undefined;
   if (b.phone !== undefined) {
-    if (typeof b.phone !== 'string' || b.phone.length > MAX.phone) {
+    if (typeof b.phone !== 'string') {
       errors.phone = 'invalidPhone';
     } else {
-      const normalized = b.phone.replace(/\s/g, '');
-      const digits = normalized.replace(/\D/g, '');
-      if (!/^[+\d\-().]+$/.test(normalized) || digits.length < 7 || digits.length > 15)
-        errors.phone = 'invalidPhone';
+      const normalized = normalizePhone(b.phone);
+      if (normalized === null) errors.phone = 'invalidPhone';
+      else phone = normalized;
     }
   }
 
@@ -91,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     rental_type: b.rental_type as RentalType[],
     lang,
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
-    ...(b.phone ? { phone: b.phone as string } : {}),
+    ...(phone ? { phone } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
   };
 
