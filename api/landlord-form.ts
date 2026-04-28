@@ -94,6 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...(b.middle_name ? { middle_name: (b.middle_name as string).trim() } : {}),
     ...(phone ? { phone } : {}),
     ...(b.comments ? { comments: (b.comments as string).trim() } : {}),
+    marketing_consent: b.marketing_consent === true,
   };
 
   if (await isOnCooldown(`ll:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });

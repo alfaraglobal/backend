@@ -13,6 +13,7 @@ export interface LandlordPayload {
   middle_name?: string;
   phone?: string;
   comments?: string;
+  marketing_consent: boolean;
 }
 
 const resendSend = new Resend(process.env.RESEND_SEND_KEY!);
@@ -88,6 +89,7 @@ export async function sendLandlordConfirmationEmail(email: string, lang: Lang, t
         EMAIL_ADDRESS: payload.email,
         PROPERTY_LOCATION: payload.location,
         INTERNATIONAL_STUDENTS: payload.international_students ? YES_NO_LABELS[lang].yes : YES_NO_LABELS[lang].no,
+        PERSONAL_DATA_COMMERCIAL: payload.marketing_consent ? YES_NO_LABELS[lang].yes : YES_NO_LABELS[lang].no,
         RENTAL_TYPE: rentalType,
         ...(payload.phone ? { PHONE: payload.phone } : {}),
         ...(payload.comments ? { COMMENTS: payload.comments } : {}),
