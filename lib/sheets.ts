@@ -120,6 +120,7 @@ export async function appendLandlordRow(token: string, payload: {
   international_students: boolean;
   rental_type: string[];
   comments?: string;
+  marketing_consent: boolean;
 }): Promise<void> {
   await appendRow(TAB_LANDLORD, token, [
     payload.lang,
@@ -132,6 +133,7 @@ export async function appendLandlordRow(token: string, payload: {
     payload.international_students,
     payload.rental_type.join(', '),
     payload.comments ?? '',
+    payload.marketing_consent,
     '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
