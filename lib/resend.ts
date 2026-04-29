@@ -71,7 +71,7 @@ const RENTAL_TYPE_LABELS: Record<Lang, Record<RentalType, string>> = {
 };
 
 export async function sendLandlordConfirmationEmail(email: string, lang: Lang, token: string, payload: LandlordPayload): Promise<void> {
-  const confirmUrl = `${API_URL}/api/confirm-landlord-form?token=${token}&lang=${lang}`;
+  const confirmUrl = `${API_URL}/api/landlord-form?token=${token}&lang=${lang}`;
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
   const fullName = [payload.name, payload.middle_name, payload.surname].filter(Boolean).join(' ');
