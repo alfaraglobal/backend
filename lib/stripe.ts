@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import type { Lang } from './config';
+import { type Lang, VALID_LANGS } from './config';
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   timeout: Number(process.env.STRIPE_TIMEOUT_MS ?? 5000),
@@ -57,6 +57,7 @@ export const PREMIUM_PRICE_IDS: Record<Billing, string> = {
 export function getPriceId(plan: Plan, billing: Billing): string {
   return PRICE_IDS[plan][billing];
 }
+
 
 /**
  * Returns the active subscription for a given email, or null if none exists.

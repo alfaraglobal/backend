@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated, type MarketingConsent } from '../lib/stripe';
-import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail } from '../lib/resend';
+import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail, addNewsletterContact, removeNewsletterContact } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -76,6 +76,14 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
       console.error('[stripe-webhook] failed to send welcome email:', err);
     }
   }
+
+  if (email && marketing_consent === 'true') {
+    try {
+      await addNewsletterContact(email, lang);
+    } catch (err) {
+      console.error('[stripe-webhook] failed to add newsletter contact:', err);
+    }
+  }
 }
 
 async function onInvoicePaymentFailed(invoice: Invoice) {
@@ -125,6 +133,14 @@ async function onSubscriptionDeleted(subscription: Subscription) {
     });
   } catch (err) {
     console.error('[stripe-webhook] failed to update metadata on subscription deletion:', err);
+  }
+
+  if (customer.email) {
+    try {
+      await removeNewsletterContact(customer.email);
+    } catch (err) {
+      console.error('[stripe-webhook] failed to remove newsletter contact:', err);
+    }
   }
 }
 
@@ -183,7 +199,29 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
 }
 
 async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: CustomerUpdatedData['previous_attributes']) {
-  if (!previousAttributes || !('phone' in previousAttributes)) return;
+  if (!previousAttributes) return;
+
+  const emailChanged = 'email' in previousAttributes && previousAttributes.email && previousAttributes.email !== customer.email;
+  const phoneChanged = 'phone' in previousAttributes;
+  if (!emailChanged && !phoneChanged) return;
+
+  if (emailChanged && customer.email) {
+    const consent = customer.metadata?.['marketing_consent'];
+    if (consent === 'true') {
+      const language = customer.metadata?.['language'] as string | undefined;
+      const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+      try {
+        await Promise.all([
+          removeNewsletterContact(previousAttributes.email!),
+          addNewsletterContact(customer.email, lang),
+        ]);
+      } catch (err) {
+        console.error('[stripe-webhook] failed to update newsletter contact on email change:', err);
+      }
+    }
+  }
+
+  if (!phoneChanged) return;
 
   const previousPhone = previousAttributes.phone ?? null;
   const currentPhone = customer.phone ?? null;
