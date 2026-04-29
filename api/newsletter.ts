@@ -4,6 +4,7 @@ import { isEmail } from 'validator';
 import { getNewsletterSignedDownloadUrl } from '../lib/gcs';
 import { stripe, getPlanFromProductId } from '../lib/stripe';
 import { removeNewsletterContact } from '../lib/resend';
+import { newsletterLimiter, checkRateLimit } from '../lib/ratelimit';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -19,6 +20,8 @@ function verifyHmac(secret: string, data: string, token: string): boolean {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).end('Method Not Allowed');
+
+  if (!await checkRateLimit(newsletterLimiter, req, res)) return;
 
   const { action, id, lang, email, token } = req.query as Record<string, string>;
   const secret = process.env.NEWSLETTER_UNSUBSCRIBE_SECRET!;
@@ -58,8 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         const language = customer.metadata?.['language'] as string | undefined;
-        const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
-        if (lang !== 'en') langPrefix = `/${lang}`;
+        const customerLang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+        if (customerLang !== 'en') langPrefix = `/${customerLang}`;
 
         const subscriptions = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 1 });
         const sub = subscriptions.data[0];
@@ -72,7 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('[newsletter] unsubscribe stripe error:', err);
     }
 
-    const redirectUrl = `${SITE_URL}${langPrefix}/unsubscribe-success?status=${statusType}`;
+    const redirectUrl = `${SITE_URL}${langPrefix}/status?type=${statusType}`;
+    console.log('[newsletter] unsubscribe redirect:', { email: decodedEmail, statusType, redirectUrl });
 
     try {
       await removeNewsletterContact(decodedEmail);

@@ -2,13 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHmac } from 'crypto';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/cors';
 import { getNewsletterSignedUploadUrl, allNewsletterFilesExist } from '../lib/gcs';
-import { redis } from '../lib/ratelimit';
 import { listNewsletterContacts, sendNewsletterBatch } from '../lib/resend';
 import { type Lang, VALID_LANGS, API_URL } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
-
-const NEWSLETTER_PREPARE_TTL = 2 * 60 * 60; // 2 hours
 
 function checkAdminKey(req: VercelRequest): boolean {
   const key = req.headers['x-admin-key'];
@@ -37,8 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         VALID_LANGS.map(async lang => [lang, await getNewsletterSignedUploadUrl(newsletterId, lang)])
       );
       const upload_urls = Object.fromEntries(uploadEntries);
-
-      await redis.set(`newsletter:${newsletterId}`, { status: 'preparing', created_at: Date.now() }, { ex: NEWSLETTER_PREPARE_TTL });
 
       return res.status(200).json({ newsletter_id: newsletterId, upload_urls });
     } catch (err) {

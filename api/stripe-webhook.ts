@@ -199,7 +199,29 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
 }
 
 async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: CustomerUpdatedData['previous_attributes']) {
-  if (!previousAttributes || !('phone' in previousAttributes)) return;
+  if (!previousAttributes) return;
+
+  const emailChanged = 'email' in previousAttributes && previousAttributes.email && previousAttributes.email !== customer.email;
+  const phoneChanged = 'phone' in previousAttributes;
+  if (!emailChanged && !phoneChanged) return;
+
+  if (emailChanged && customer.email) {
+    const consent = customer.metadata?.['marketing_consent'];
+    if (consent === 'true') {
+      const language = customer.metadata?.['language'] as string | undefined;
+      const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+      try {
+        await Promise.all([
+          removeNewsletterContact(previousAttributes.email!),
+          addNewsletterContact(customer.email, lang),
+        ]);
+      } catch (err) {
+        console.error('[stripe-webhook] failed to update newsletter contact on email change:', err);
+      }
+    }
+  }
+
+  if (!phoneChanged) return;
 
   const previousPhone = previousAttributes.phone ?? null;
   const currentPhone = customer.phone ?? null;
