@@ -18,6 +18,8 @@ interface ParsedForm {
   email: string;
   phone: string;
   lang: string;
+  consent: boolean;
+  marketing_consent: boolean;
   fileBuffer: Buffer | null;
   fileName: string;
   fileMimeType: string;
@@ -31,6 +33,8 @@ function parseForm(req: VercelRequest): Promise<ParsedForm> {
       email: '',
       phone: '',
       lang: '',
+      consent: false,
+      marketing_consent: false,
       fileBuffer: null,
       fileName: '',
       fileMimeType: '',
@@ -40,13 +44,15 @@ function parseForm(req: VercelRequest): Promise<ParsedForm> {
 
     const bb = busboy({
       headers: req.headers,
-      limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 4 },
+      limits: { fileSize: MAX_FILE_SIZE, files: 1, fields: 6 },
     });
 
     bb.on('field', (key, val) => {
       if (key === 'email') result.email = val.trim().toLowerCase();
       if (key === 'phone') result.phone = val.trim();
       if (key === 'lang') result.lang = val.trim();
+      if (key === 'consent') result.consent = val === 'true';
+      if (key === 'marketing_consent') result.marketing_consent = val === 'true';
     });
 
     bb.on('file', (field, stream, info) => {
@@ -103,6 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const errors: Record<string, string> = {};
 
+  if (!form.consent)
+    errors.consent = 'required';
+
   if (!form.email || form.email.length > 254 || !isEmail(form.email))
     errors.email = 'invalidEmail';
 
@@ -132,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { url: documentUrl, expiry: documentUrlExpiry, authenticatedUrl } = await uploadVerificationDoc(fileName, form.fileMimeType, form.fileBuffer!);
-    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, ...(form.phone ? { phone: form.phone } : {}) });
+    await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, marketing_consent: form.marketing_consent, ...(form.phone ? { phone: form.phone } : {}) });
     await setCooldown(cooldownKey, 60 * 60 * 24); // 24 hours
   } catch (err) {
     console.error('[ceu-verification] error:', err);

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isEmail } from 'validator';
 import { checkOrigin, setCorsHeaders, forbidden, handlePreflight, checkPreviewKey } from '../lib/cors';
 import { checkoutLimiter, checkRateLimit } from '../lib/ratelimit';
-import { stripe, getActiveSubscription, getPriceId, toStripeLocale, VALID_PLANS, VALID_BILLINGS, type Plan, type Billing } from '../lib/stripe';
+import { stripe, getActiveSubscription, getPriceId, toStripeLocale, VALID_PLANS, VALID_BILLINGS, type Plan, type Billing, type MarketingConsent } from '../lib/stripe';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
 import { normalizePhone } from '../lib/validation';
 
@@ -45,11 +45,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawLang = req.body?.lang;
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
+  if (req.body?.consent !== true) return res.status(400).json({ error: 'consent-required' });
+
+  if (typeof req.body?.marketing_consent !== 'boolean') return res.status(400).json({ error: 'invalid-marketing-consent' });
+  const marketing_consent: MarketingConsent = req.body.marketing_consent ? 'true' : 'false';
+
   try {
     const existing = await getActiveSubscription(email);
     if (existing) return res.status(200).json({ ok: false, error: 'already-subscribed' });
 
-    const contactMetadata = { language: lang, ...(phone ? { phone } : {}) };
+    const contactMetadata = { language: lang, marketing_consent, ...(phone ? { phone } : {}) };
     const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
     const session = await stripe.checkout.sessions.create({

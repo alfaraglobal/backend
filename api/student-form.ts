@@ -98,6 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // — Accommodation —
 
+  if (b.consent !== true)
+    errors.consent = 'required';
+
   if (typeof b.accommodation_type !== 'string' || !(ACCOMMODATION_TYPES as readonly string[]).includes(b.accommodation_type))
     errors.accommodation_type = 'selectOne';
 

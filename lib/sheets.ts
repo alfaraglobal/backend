@@ -84,6 +84,7 @@ export async function appendCeuVerificationRow(payload: {
   documentUrlExpiry: string;
   fileName: string;
   authenticatedUrl: string;
+  marketing_consent: boolean;
   phone?: string;
 }): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
@@ -103,6 +104,7 @@ export async function appendCeuVerificationRow(payload: {
         payload.documentUrlExpiry,
         payload.fileName,
         payload.authenticatedUrl,
+        payload.marketing_consent,
         process.env.GOOGLE_SHEETS_PENDING_STATUS!,
       ]],
     },

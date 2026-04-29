@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated } from '../lib/stripe';
+import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated, type MarketingConsent } from '../lib/stripe';
 import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
@@ -27,7 +27,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
   if (!customerId || !session.metadata) return;
 
-  const { phone, language } = session.metadata;
+  const { phone, language, marketing_consent } = session.metadata;
   const email = session.customer_details?.email ?? undefined;
   const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
 
@@ -61,6 +61,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
         ...(whatsappStatus !== null ? { added_to_whatsapp: whatsappStatus } : {}),
         ...(language ? { language } : {}),
         ...(phone ? { whatsapp_number: phone } : {}),
+        ...(marketing_consent ? { marketing_consent: marketing_consent as MarketingConsent } : {}),
       },
     });
   } catch (err) {

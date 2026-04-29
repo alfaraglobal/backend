@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { stripe, getActiveSubscription, toStripeLocale, PREMIUM_PRICE_IDS, VALID_BILLINGS, type Billing } from '../lib/stripe';
+import { stripe, getActiveSubscription, toStripeLocale, PREMIUM_PRICE_IDS, VALID_BILLINGS, type Billing, type MarketingConsent } from '../lib/stripe';
 import { confirmLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { SITE_URL, type Lang } from '../lib/config';
 
@@ -7,6 +7,7 @@ interface PremiumTokenPayload {
   email: string;
   name: string;
   lang: Lang;
+  marketing_consent: boolean;
   phone?: string;
 }
 
@@ -37,8 +38,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? await stripe.customers.update(customers.data[0].id, { name: payload.name, ...phoneField })
       : await stripe.customers.create({ email: payload.email, name: payload.name, ...phoneField });
 
+    const marketing_consent: MarketingConsent = payload.marketing_consent ? 'true' : 'false';
     const contactMetadata = {
       language: payload.lang,
+      marketing_consent,
       ...(payload.phone ? { phone: payload.phone } : {}),
     };
     const langPrefix = payload.lang === 'en' ? '' : `/${payload.lang}`;
