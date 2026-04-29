@@ -50,6 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     phone = normalized;
   }
 
+  if (typeof req.body?.marketing_consent !== 'boolean') return res.status(400).json({ error: 'invalid-marketing-consent' });
+  const marketing_consent: boolean = req.body.marketing_consent;
+
   try {
     const existing = await getActiveSubscription(email);
     if (existing) return res.status(409).json({ error: 'already-subscribed' });
@@ -58,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const formToken = randomBytes(32).toString('hex');
 
     await Promise.all([
-      redis.set(`premium_token:${token}`, { email, name, lang, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
+      redis.set(`premium_token:${token}`, { email, name, lang, marketing_consent, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
       redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
     ]);
 

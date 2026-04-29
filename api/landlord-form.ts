@@ -63,6 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (b.comments !== undefined && (typeof b.comments !== 'string' || b.comments.length > MAX.comments))
     errors.comments = 'minChars';
 
+  if (b.consent !== true)
+    errors.consent = 'required';
+
   if (typeof b.international_students !== 'boolean')
     errors.international_students = 'selectOne';
 
