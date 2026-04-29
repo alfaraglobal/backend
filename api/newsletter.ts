@@ -77,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       await removeNewsletterContact(decodedEmail);
     } catch (err) {
-      console.error('[newsletter] unsubscribe resend error:', err);
+      console.error('[newsletter] remove resend error:', err);
     }
 
     return res.redirect(302, redirectUrl);
