@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { API_URL, SITE_URL, type Lang, type RentalType } from './config';
+import { API_URL, SITE_URL, VALID_LANGS, type Lang, type RentalType } from './config';
 import type { SubscriptionPlan } from './stripe';
 
 export interface LandlordPayload {
@@ -17,6 +17,28 @@ export interface LandlordPayload {
 }
 
 const resendSend = new Resend(process.env.RESEND_SEND_KEY!);
+const resendFull = new Resend(process.env.RESEND_FULL_KEY!);
+
+export type NewsletterContact = { email: string; lang: Lang };
+
+export async function addNewsletterContact(email: string, lang: Lang): Promise<void> {
+  await resendFull.contacts.create({ email, unsubscribed: false, lastName: lang });
+}
+
+export async function removeNewsletterContact(email: string): Promise<void> {
+  await resendFull.contacts.remove({ email });
+}
+
+export async function listNewsletterContacts(): Promise<NewsletterContact[]> {
+  const result = await resendFull.contacts.list();
+  const contacts = result.data?.data ?? [];
+  return contacts
+    .filter(c => !c.unsubscribed)
+    .map(c => ({
+      email: c.email,
+      lang: VALID_LANGS.includes(c.last_name as Lang) ? c.last_name as Lang : 'en',
+    }));
+}
 
 interface EmailPayload {
   to: string;
@@ -237,4 +259,43 @@ const PHONE_NUMBER_COMPLETE_TEMPLATE_ID: Record<Lang, string> = {
 
 export async function sendPhoneNumberCompleteEmail(email: string, lang: Lang): Promise<void> {
   await sendEmail('sendPhoneNumberCompleteEmail', { to: email, template: { id: PHONE_NUMBER_COMPLETE_TEMPLATE_ID[lang] } });
+}
+
+const NEWSLETTER_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_NEWSLETTER_EN_TPL_ID!,
+  es: process.env.RESEND_NEWSLETTER_ES_TPL_ID!,
+  fr: process.env.RESEND_NEWSLETTER_FR_TPL_ID!,
+  ca: process.env.RESEND_NEWSLETTER_CA_TPL_ID!,
+};
+
+export type NewsletterBatchItem = {
+  email: string;
+  lang: Lang;
+  downloadUrls: Record<Lang, string>;
+  unsubUrl: string;
+};
+
+export async function sendNewsletterBatch(items: NewsletterBatchItem[]): Promise<void> {
+  if (items.length > 100) throw new Error(`[resend] sendNewsletterBatch: max 100 items, got ${items.length}`);
+  const emails = items.map(({ email, lang, downloadUrls, unsubUrl }) => ({
+    to: email,
+    template: {
+      id: NEWSLETTER_TEMPLATE_ID[lang],
+      variables: {
+        DOWNLOAD_EN: downloadUrls.en,
+        DOWNLOAD_ES: downloadUrls.es,
+        DOWNLOAD_FR: downloadUrls.fr,
+        DOWNLOAD_CA: downloadUrls.ca,
+        UNSUB_URL: unsubUrl,
+      },
+    },
+  }));
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[resend:dev] sendNewsletterBatch', emails.length, 'emails', JSON.stringify(emails[0], null, 2));
+    return;
+  }
+
+  const { error } = await resendSend.batch.send(emails);
+  if (error) throw new Error(`[resend] sendNewsletterBatch: ${JSON.stringify(error)}`);
 }

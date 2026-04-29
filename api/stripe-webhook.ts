@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated, type MarketingConsent } from '../lib/stripe';
-import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail } from '../lib/resend';
+import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail, addNewsletterContact, removeNewsletterContact } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 
 export const config = { api: { bodyParser: false } };
@@ -76,6 +76,14 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
       console.error('[stripe-webhook] failed to send welcome email:', err);
     }
   }
+
+  if (email && marketing_consent === 'true') {
+    try {
+      await addNewsletterContact(email, lang);
+    } catch (err) {
+      console.error('[stripe-webhook] failed to add newsletter contact:', err);
+    }
+  }
 }
 
 async function onInvoicePaymentFailed(invoice: Invoice) {
@@ -125,6 +133,14 @@ async function onSubscriptionDeleted(subscription: Subscription) {
     });
   } catch (err) {
     console.error('[stripe-webhook] failed to update metadata on subscription deletion:', err);
+  }
+
+  if (customer.email) {
+    try {
+      await removeNewsletterContact(customer.email);
+    } catch (err) {
+      console.error('[stripe-webhook] failed to remove newsletter contact:', err);
+    }
   }
 }
 
