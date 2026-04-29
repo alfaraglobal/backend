@@ -105,19 +105,36 @@ const PREMIUM_CHECKOUT_TEMPLATE_ID: Record<Lang, string> = {
   ca: process.env.RESEND_PREMIUM_CHECKOUT_CA_TPL_ID!,
 };
 
-export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: string, monthlyUrl: string, yearlyUrl: string, formToken: string): Promise<void> {
+const STUDENT_FORM_TEMPLATE_ID: Record<Lang, string> = {
+  en: process.env.RESEND_STUDENT_FORM_EN_TPL_ID!,
+  es: process.env.RESEND_STUDENT_FORM_ES_TPL_ID!,
+  fr: process.env.RESEND_STUDENT_FORM_FR_TPL_ID!,
+  ca: process.env.RESEND_STUDENT_FORM_CA_TPL_ID!,
+};
+
+type SendPremiumOptions = {
+  formOnly?: boolean;
+  monthlyUrl?: string;
+  yearlyUrl?: string;
+};
+
+export async function sendPremiumCheckoutEmail(email: string, lang: Lang, name: string, formToken: string, options: SendPremiumOptions): Promise<void> {
+  const { formOnly = false, monthlyUrl = '', yearlyUrl = '' } = options;
+
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
+  const formUrl = `${SITE_URL}${langPrefix}/housing/student-form?token=${formToken}`;
+
+  const templateId = formOnly ? STUDENT_FORM_TEMPLATE_ID[lang] : PREMIUM_CHECKOUT_TEMPLATE_ID[lang];
+
+  const variables: Record<string, string> = formOnly
+    ? { NAME: name, FORM_URL: formUrl }
+    : { NAME: name, MONTHLY_URL: monthlyUrl, YEARLY_URL: yearlyUrl, FORM_URL: formUrl };
 
   await sendEmail('sendPremiumCheckoutEmail', {
     to: email,
     template: {
-      id: PREMIUM_CHECKOUT_TEMPLATE_ID[lang],
-      variables: {
-        NAME: name,
-        MONTHLY_URL: monthlyUrl,
-        YEARLY_URL: yearlyUrl,
-        FORM_URL: `${SITE_URL}${langPrefix}/housing/student-form?token=${formToken}`,
-      },
+      id: templateId,
+      variables: variables,
     },
   });
 }

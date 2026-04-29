@@ -53,23 +53,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (typeof req.body?.marketing_consent !== 'boolean') return res.status(400).json({ error: 'invalid-marketing-consent' });
   const marketing_consent: boolean = req.body.marketing_consent;
 
+  const formOnly = req.body?.form_only === true;
+
   try {
+    const formToken = randomBytes(32).toString('hex');
+
+    if (formOnly) {
+      await redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL });
+      await sendPremiumCheckoutEmail(email, lang, name, formToken, { formOnly: true });
+      return res.status(200).json({ ok: true });
+    }
+
     const existing = await getActiveSubscription(email);
     if (existing) return res.status(409).json({ error: 'already-subscribed' });
 
     const token = randomBytes(32).toString('hex');
-    const formToken = randomBytes(32).toString('hex');
+    const monthlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=monthly`;
+    const yearlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=yearly`;
 
     await Promise.all([
       redis.set(`premium_token:${token}`, { email, name, lang, marketing_consent, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
       redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
     ]);
 
-    const monthlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=monthly`;
-    const yearlyUrl = `${API_URL}/api/redeem-premium-session?token=${token}&billing=yearly`;
-
-    await sendPremiumCheckoutEmail(email, lang, name, monthlyUrl, yearlyUrl, formToken);
-
+    await sendPremiumCheckoutEmail(email, lang, name, formToken, { monthlyUrl, yearlyUrl });
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[admin-create-premium-session] error:', err);
