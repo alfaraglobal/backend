@@ -8,6 +8,29 @@ import { type Lang, VALID_LANGS, API_URL } from '../lib/config';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
+function buildPayload(email: string, lang: Lang, newsletterId: string, secret: string) {
+  const dlToken = createHmac('sha256', secret).update(`dl:${email}:${newsletterId}`).digest('hex');
+  const unsubToken = createHmac('sha256', secret).update(`unsub:${email}`).digest('hex');
+  const downloadUrls = Object.fromEntries(
+    VALID_LANGS.map(l => [
+      l,
+      `${API_URL}/api/newsletter?action=download&id=${newsletterId}&lang=${l}&email=${encodeURIComponent(email)}&token=${dlToken}`,
+    ])
+  ) as Record<Lang, string>;
+  const unsubUrl = `${API_URL}/api/newsletter?action=unsubscribe&email=${encodeURIComponent(email)}&token=${unsubToken}`;
+  return { email, lang, downloadUrls, unsubUrl };
+}
+
+async function sendInChunks(payloads: ReturnType<typeof buildPayload>[]) {
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+    const chunk = payloads.slice(i, i + CHUNK_SIZE);
+    await sendNewsletterBatch(chunk);
+    if (i + CHUNK_SIZE < payloads.length) await sleep(200);
+  }
+}
+
 function checkAdminKey(req: VercelRequest): boolean {
   const key = req.headers['x-admin-key'];
   return typeof key === 'string' && key === process.env.ADMIN_KEY;
@@ -59,33 +82,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (contacts.length === 0) return res.status(200).json({ ok: true, sent: 0 });
 
       const secret = process.env.NEWSLETTER_UNSUBSCRIBE_SECRET!;
-
-      const payloads = contacts.map(({ email, lang }) => {
-        const dlToken = createHmac('sha256', secret).update(`dl:${email}:${newsletterId}`).digest('hex');
-        const unsubToken = createHmac('sha256', secret).update(`unsub:${email}`).digest('hex');
-
-        const downloadUrls = Object.fromEntries(
-          VALID_LANGS.map(l => [
-            l,
-            `${API_URL}/api/newsletter?action=download&id=${newsletterId}&lang=${l}&email=${encodeURIComponent(email)}&token=${dlToken}`,
-          ])
-        ) as Record<Lang, string>;
-        const unsubUrl = `${API_URL}/api/newsletter?action=unsubscribe&email=${encodeURIComponent(email)}&token=${unsubToken}`;
-
-        return { email, lang, downloadUrls, unsubUrl };
-      });
+      const payloads = contacts.map(({ email, lang }) => buildPayload(email, lang, newsletterId, secret));
 
       console.log('[admin-newsletter] sample payload:', JSON.stringify(payloads[0], null, 2));
 
-      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-      const CHUNK_SIZE = 100;
-
-      for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
-        const chunk = payloads.slice(i, i + CHUNK_SIZE);
-        console.log(`[admin-newsletter] sending chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(payloads.length / CHUNK_SIZE)}`);
-        await sendNewsletterBatch(chunk);
-        if (i + CHUNK_SIZE < payloads.length) await sleep(200);
-      }
+      await sendInChunks(payloads);
 
       return res.status(200).json({ ok: true, sent: payloads.length });
     } catch (err) {
@@ -119,30 +120,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!allExist) return res.status(404).json({ error: 'newsletter-files-not-found' });
 
       const secret = process.env.NEWSLETTER_UNSUBSCRIBE_SECRET!;
+      const payloads = validEntries.map(({ email, lang }) => buildPayload(email, lang, newsletterId, secret));
 
-      const payloads = validEntries.map(({ email, lang }) => {
-        const dlToken = createHmac('sha256', secret).update(`dl:${email}:${newsletterId}`).digest('hex');
-        const unsubToken = createHmac('sha256', secret).update(`unsub:${email}`).digest('hex');
-
-        const downloadUrls = Object.fromEntries(
-          VALID_LANGS.map(l => [
-            l,
-            `${API_URL}/api/newsletter?action=download&id=${newsletterId}&lang=${l}&email=${encodeURIComponent(email)}&token=${dlToken}`,
-          ])
-        ) as Record<Lang, string>;
-        const unsubUrl = `${API_URL}/api/newsletter?action=unsubscribe&email=${encodeURIComponent(email)}&token=${unsubToken}`;
-
-        return { email, lang, downloadUrls, unsubUrl };
-      });
-
-      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-      const CHUNK_SIZE = 100;
-
-      for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
-        const chunk = payloads.slice(i, i + CHUNK_SIZE);
-        await sendNewsletterBatch(chunk);
-        if (i + CHUNK_SIZE < payloads.length) await sleep(200);
-      }
+      await sendInChunks(payloads);
 
       return res.status(200).json({ ok: true, sent: payloads.length });
     } catch (err) {
