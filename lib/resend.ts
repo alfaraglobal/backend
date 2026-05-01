@@ -287,6 +287,8 @@ export async function sendNewsletterBatch(items: NewsletterBatchItem[]): Promise
         DOWNLOAD_FR: downloadUrls.fr,
         DOWNLOAD_CA: downloadUrls.ca,
         UNSUB_URL: unsubUrl,
+        COMPANY_NAME: process.env.COMPANY_NAME!,
+        COMPANY_ADDRESS: process.env.COMPANY_ADDRESS!,
       },
     },
   }));
