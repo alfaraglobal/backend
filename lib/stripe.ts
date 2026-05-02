@@ -30,7 +30,7 @@ export type Plan = typeof VALID_PLANS[number];
 export const PAYMENT_STATUSES = ['active', 'failing', 'canceled'] as const;
 export type PaymentStatus = typeof PAYMENT_STATUSES[number];
 
-export type WhatsappStatus = 'false' | 'true' | '';
+export type WhatsappStatus = 'false' | 'true' | 'n/a';
 export type WhatsappRemoval = 'true' | 'false';
 export type WhatsappNumberOutdated = 'true' | 'false';
 export type MarketingConsent = 'true' | 'false';

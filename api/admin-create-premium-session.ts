@@ -7,6 +7,7 @@ import { redis } from '../lib/ratelimit';
 import { sendPremiumCheckoutEmail } from '../lib/resend';
 import { VALID_LANGS, API_URL, type Lang } from '../lib/config';
 import { normalizePhone } from '../lib/validation';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
@@ -55,16 +56,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const formOnly = req.body?.form_only === true;
 
+  devLog('admin-create-premium-session: email:', email, 'name:', name, 'lang:', lang, 'formOnly:', formOnly);
+
   try {
     const formToken = randomBytes(32).toString('hex');
 
     if (formOnly) {
+      devLog('admin-create-premium-session: form-only flow, sending form email');
       await redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL });
       await sendPremiumCheckoutEmail(email, lang, name, formToken, { formOnly: true });
+      devLog('admin-create-premium-session: form email sent');
       return res.status(200).json({ ok: true });
     }
 
     const existing = await getActiveSubscription(email);
+    devLog('admin-create-premium-session: existing subscription:', existing != null);
     if (existing) return res.status(409).json({ error: 'already-subscribed' });
 
     const token = randomBytes(32).toString('hex');
@@ -75,8 +81,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       redis.set(`premium_token:${token}`, { email, name, lang, marketing_consent, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
       redis.set(`premium_form_token:${formToken}`, { name, email, ...(phone ? { phone } : {}) }, { ex: PREMIUM_TOKEN_TTL }),
     ]);
+    devLog('admin-create-premium-session: tokens stored, sending checkout email');
 
     await sendPremiumCheckoutEmail(email, lang, name, formToken, { monthlyUrl, yearlyUrl });
+    devLog('admin-create-premium-session: checkout email sent');
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[admin-create-premium-session] error:', err);

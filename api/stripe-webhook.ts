@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated, type MarketingConsent } from '../lib/stripe';
 import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail, addNewsletterContact, removeNewsletterContact } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: false } };
 
@@ -30,6 +31,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   const { phone, language, marketing_consent } = session.metadata;
   const email = session.customer_details?.email ?? undefined;
   const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
+  devLog('onCheckoutSessionCompleted: customerId:', customerId, 'email:', email, 'lang:', lang);
 
   const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
@@ -43,6 +45,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
       ]);
       plan = getPlanFromProductId(subscription.items.data[0]?.price.product as string);
       isFirstSubscription = allSubs.data.length === 1;
+      devLog('onCheckoutSessionCompleted: plan:', plan, 'isFirstSubscription:', isFirstSubscription);
     } catch (err) {
       console.error('[stripe-webhook] failed to retrieve subscription:', err);
       throw err;
@@ -50,7 +53,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   }
 
   const isWhatsappPlan = plan === 'standard' || plan === 'premium';
-  const whatsappStatus: WhatsappStatus | null = isWhatsappPlan ? (phone ? 'false' : '') : null;
+  const whatsappStatus: WhatsappStatus | null = isWhatsappPlan ? (phone ? 'false' : 'n/a') : null;
 
   try {
     await stripe.customers.update(customerId, {
@@ -58,10 +61,11 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
       metadata: {
         payment_status: 'active' satisfies PaymentStatus,
         needs_whatsapp_removal: 'false' satisfies WhatsappRemoval,
-        ...(whatsappStatus !== null ? { added_to_whatsapp: whatsappStatus } : {}),
-        ...(language ? { language } : {}),
-        ...(phone ? { whatsapp_number: phone } : {}),
-        ...(marketing_consent ? { marketing_consent: marketing_consent as MarketingConsent } : {}),
+        added_to_whatsapp: (whatsappStatus ?? 'n/a') satisfies WhatsappStatus,
+        language: language ?? 'en',
+        whatsapp_number: phone ?? 'n/a',
+        marketing_consent: (marketing_consent === 'true' ? 'true' : 'false') satisfies MarketingConsent,
+        whatsapp_number_outdated: 'false' satisfies WhatsappNumberOutdated,
       },
     });
   } catch (err) {
@@ -72,6 +76,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   if (email && plan && isFirstSubscription) {
     try {
       await sendWelcomeEmail(email, lang, plan);
+      devLog('onCheckoutSessionCompleted: welcome email sent to:', email);
     } catch (err) {
       console.error('[stripe-webhook] failed to send welcome email:', err);
     }
@@ -80,6 +85,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   if (email && marketing_consent === 'true') {
     try {
       await addNewsletterContact(email, lang);
+      devLog('onCheckoutSessionCompleted: newsletter contact added:', email);
     } catch (err) {
       console.error('[stripe-webhook] failed to add newsletter contact:', err);
     }
@@ -89,9 +95,11 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
 async function onInvoicePaymentFailed(invoice: Invoice) {
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
   if (!customerId || !invoice.parent?.subscription_details?.subscription) return;
+  devLog('onInvoicePaymentFailed: customerId:', customerId);
 
   try {
     await stripe.customers.update(customerId, { metadata: { payment_status: 'failing' satisfies PaymentStatus } });
+    devLog('onInvoicePaymentFailed: payment_status set to failing');
   } catch (err) {
     console.error('[stripe-webhook] failed to set payment_status failing:', err);
   }
@@ -100,9 +108,11 @@ async function onInvoicePaymentFailed(invoice: Invoice) {
 async function onInvoicePaid(invoice: Invoice) {
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
   if (!customerId || !invoice.parent?.subscription_details?.subscription) return;
+  devLog('onInvoicePaid: customerId:', customerId);
 
   try {
     await stripe.customers.update(customerId, { metadata: { payment_status: 'active' satisfies PaymentStatus } });
+    devLog('onInvoicePaid: payment_status set to active');
   } catch (err) {
     console.error('[stripe-webhook] failed to set payment_status active:', err);
   }
@@ -110,6 +120,7 @@ async function onInvoicePaid(invoice: Invoice) {
 
 async function onSubscriptionDeleted(subscription: Subscription) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+  devLog('onSubscriptionDeleted: customerId:', customerId);
 
   let customer;
   try {
@@ -123,6 +134,7 @@ async function onSubscriptionDeleted(subscription: Subscription) {
   const productId = subscription.items.data[0]?.price.product as string;
   const plan = getPlanFromProductId(productId);
   const isWhatsappPlan = plan === 'standard' || plan === 'premium';
+  devLog('onSubscriptionDeleted: plan:', plan, 'email:', customer.email);
 
   try {
     await stripe.customers.update(customerId, {
@@ -156,6 +168,7 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
 
   const isUpgrade = oldPlan === 'basic' && newPlan === 'standard';
   const isDowngrade = oldPlan === 'standard' && newPlan === 'basic';
+  devLog('onSubscriptionUpdated: oldPlan:', oldPlan, 'newPlan:', newPlan, 'isUpgrade:', isUpgrade, 'isDowngrade:', isDowngrade);
   if (!isUpgrade && !isDowngrade) return;
 
   let customer;
@@ -175,7 +188,7 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
     try {
       await stripe.customers.update(customerId, {
         metadata: {
-          ...(isUpgrade ? { added_to_whatsapp: '' satisfies WhatsappStatus } : {}),
+          ...(isUpgrade ? { added_to_whatsapp: (customer.phone ? 'false' : 'n/a') satisfies WhatsappStatus } : {}),
           ...(isDowngrade ? { needs_whatsapp_removal: 'true' satisfies WhatsappRemoval } : {}),
         },
       });
@@ -201,8 +214,9 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
 async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: CustomerUpdatedData['previous_attributes']) {
   if (!previousAttributes) return;
 
-  const emailChanged = 'email' in previousAttributes && previousAttributes.email && previousAttributes.email !== customer.email;
+  const emailChanged = 'email' in previousAttributes && previousAttributes.email != null && previousAttributes.email !== customer.email;
   const phoneChanged = 'phone' in previousAttributes;
+  devLog('onCustomerUpdated: customerId:', customer.id, 'emailChanged:', emailChanged, 'phoneChanged:', phoneChanged);
   if (!emailChanged && !phoneChanged) return;
 
   if (emailChanged && customer.email) {
@@ -294,6 +308,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('[stripe-webhook] signature verification failed:', err);
     return res.status(400).end('Webhook signature verification failed');
   }
+
+  devLog('stripe-webhook: event type:', event.type);
 
   try {
     switch (event.type) {
