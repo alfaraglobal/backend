@@ -51,11 +51,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     devLog('customer-portal: hasPremium:', hasPremium, 'configuration:', configuration);
 
     const customer = subscription.customer as string;
+    const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
     const session = await stripe.billingPortal.sessions.create({
       customer,
       configuration,
-      return_url: SITE_URL,
+      return_url: `${SITE_URL}${langPrefix}`,
       locale: toStripeLocale(lang),
     });
     devLog('customer-portal: portal session created:', session.url);
