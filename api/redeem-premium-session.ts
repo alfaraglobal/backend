@@ -40,8 +40,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const customers = await stripe.customers.list({ email: payload.email, limit: 1 });
     const phoneField = payload.phone ? { phone: payload.phone } : {};
     const customer = customers.data.length > 0
-      ? await stripe.customers.update(customers.data[0].id, { name: payload.name, ...phoneField })
-      : await stripe.customers.create({ email: payload.email, name: payload.name, ...phoneField });
+      ? await stripe.customers.update(customers.data[0].id, { ...phoneField })
+      : await stripe.customers.create({ email: payload.email, ...phoneField });
     devLog('redeem-premium-session: customer id:', customer.id);
 
     const marketing_consent: MarketingConsent = payload.marketing_consent ? 'true' : 'false';
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customer.id,
-      customer_update: { address: 'auto' },
+      customer_update: { address: 'auto', name: 'auto' },
       locale: toStripeLocale(payload.lang),
       line_items: [{ price: PREMIUM_PRICE_IDS[billing], quantity: 1 }],
       metadata: contactMetadata,
