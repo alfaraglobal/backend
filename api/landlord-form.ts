@@ -18,6 +18,13 @@ const CONFIRMED_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 const MAX = { name: 50, middleName: 50, surname: 50, email: 254, location: 100, comments: 2000 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = checkOrigin(req);
+
+  if (req.method !== 'GET') {
+    if (!origin) return forbidden(res);
+    if (handlePreflight(req, res, origin)) return;
+  }
+
   if (req.method === 'GET') {
     if (!await checkRateLimit(confirmLimiter, req, res)) return;
 
@@ -50,16 +57,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const origin = checkOrigin(req);
-    if (!origin) return forbidden(res);
-
-    if (handlePreflight(req, res, origin)) return;
-
     if (!checkPreviewKey(req, res)) return;
 
     if (!await checkRateLimit(landlordLimiter, req, res)) return;
 
-    setCorsHeaders(res, origin);
+    setCorsHeaders(res, origin!);
 
     const b = req.body ?? {};
     const errors: Record<string, string> = {};

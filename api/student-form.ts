@@ -32,12 +32,12 @@ function addDays(date: Date, days: number): Date {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = checkOrigin(req);
+  if (!origin) return forbidden(res);
+
+  if (handlePreflight(req, res, origin)) return;
+
   if (req.method === 'GET') {
-    const origin = checkOrigin(req);
-    if (!origin) return forbidden(res);
-
-    if (handlePreflight(req, res, origin)) return;
-
     if (!checkPreviewKey(req, res)) return;
 
     if (!await checkRateLimit(confirmLimiter, req, res)) return;
@@ -60,11 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const origin = checkOrigin(req);
-    if (!origin) return forbidden(res);
-
-    if (handlePreflight(req, res, origin)) return;
-
     if (!checkPreviewKey(req, res)) return;
 
     if (!await checkRateLimit(studentLimiter, req, res)) return;
