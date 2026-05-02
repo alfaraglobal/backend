@@ -53,7 +53,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   }
 
   const isWhatsappPlan = plan === 'standard' || plan === 'premium';
-  const whatsappStatus: WhatsappStatus | null = isWhatsappPlan ? (phone ? 'false' : '') : null;
+  const whatsappStatus: WhatsappStatus | null = isWhatsappPlan ? (phone ? 'false' : 'n/a') : null;
 
   try {
     await stripe.customers.update(customerId, {
@@ -61,9 +61,9 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
       metadata: {
         payment_status: 'active' satisfies PaymentStatus,
         needs_whatsapp_removal: 'false' satisfies WhatsappRemoval,
-        added_to_whatsapp: (whatsappStatus ?? '') satisfies WhatsappStatus,
+        added_to_whatsapp: (whatsappStatus ?? 'n/a') satisfies WhatsappStatus,
         language: language ?? 'en',
-        whatsapp_number: phone ?? '',
+        whatsapp_number: phone ?? 'n/a',
         marketing_consent: (marketing_consent === 'true' ? 'true' : 'false') satisfies MarketingConsent,
         whatsapp_number_outdated: 'false' satisfies WhatsappNumberOutdated,
       },
@@ -188,7 +188,7 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
     try {
       await stripe.customers.update(customerId, {
         metadata: {
-          ...(isUpgrade ? { added_to_whatsapp: '' satisfies WhatsappStatus } : {}),
+          ...(isUpgrade ? { added_to_whatsapp: (customer.phone ? 'false' : 'n/a') satisfies WhatsappStatus } : {}),
           ...(isDowngrade ? { needs_whatsapp_removal: 'true' satisfies WhatsappRemoval } : {}),
         },
       });
