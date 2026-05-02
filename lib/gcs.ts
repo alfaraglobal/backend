@@ -19,7 +19,8 @@ const NEWSLETTER_UPLOAD_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const NEWSLETTER_DOWNLOAD_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function newsletterFilePath(newsletterId: string, lang: Lang): string {
-  return `${newsletterId}/${lang}.pdf`;
+  const id = newsletterId.replace(/-/g, '');
+  return `${newsletterId}/ag_newsletter_${id}_${lang}.pdf`;
 }
 
 export async function uploadVerificationDoc(
