@@ -36,16 +36,11 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
   const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
   let plan = null;
-  let isFirstSubscription = false;
   if (subscriptionId) {
     try {
-      const [subscription, allSubs] = await Promise.all([
-        stripe.subscriptions.retrieve(subscriptionId),
-        stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 2 }),
-      ]);
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       plan = getPlanFromProductId(subscription.items.data[0]?.price.product as string);
-      isFirstSubscription = allSubs.data.length === 1;
-      devLog('onCheckoutSessionCompleted: plan:', plan, 'isFirstSubscription:', isFirstSubscription);
+      devLog('onCheckoutSessionCompleted: plan:', plan);
     } catch (err) {
       console.error('[stripe-webhook] failed to retrieve subscription:', err);
       throw err;
@@ -73,7 +68,7 @@ async function onCheckoutSessionCompleted(session: CheckoutSession) {
     throw err;
   }
 
-  if (email && plan && isFirstSubscription) {
+  if (email && plan) {
     try {
       await sendWelcomeEmail(email, lang, plan);
       devLog('onCheckoutSessionCompleted: welcome email sent to:', email);
