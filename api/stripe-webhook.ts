@@ -183,7 +183,7 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
     try {
       await stripe.customers.update(customerId, {
         metadata: {
-          ...(isUpgrade ? { added_to_whatsapp: (customer.phone ? 'false' : 'n/a') satisfies WhatsappStatus } : {}),
+          ...(isUpgrade ? { added_to_whatsapp: (customer.phone ? 'false' : 'n/a') satisfies WhatsappStatus, whatsapp_number: customer.phone ?? 'n/a' } : {}),
           ...(isDowngrade ? { needs_whatsapp_removal: 'true' satisfies WhatsappRemoval } : {}),
         },
       });
