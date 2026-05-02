@@ -74,6 +74,7 @@ export async function appendStudentRow(token: string, payload: {
     payload.home_vibe ?? '',
     payload.daily_rhythm ?? '',
     payload.comments ?? '',
+    '',
     process.env.GOOGLE_SHEETS_PENDING_STATUS!,
   ]);
 }
