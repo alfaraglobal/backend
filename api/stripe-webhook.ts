@@ -256,7 +256,8 @@ async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: 
 
   if (!previousPhone) {
     // First-time phone addition via portal — guard against checkout-triggered updates
-    if (customer.metadata?.['whatsapp_number']) return;
+    const existingWhatsappNumber = customer.metadata?.['whatsapp_number'];
+    if (existingWhatsappNumber && existingWhatsappNumber !== 'n/a') return;
 
     try {
       await stripe.customers.update(customer.id, {
