@@ -59,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existing) return res.status(200).json({ ok: false, error: 'already-subscribed' });
 
     const customers = await stripe.customers.list({ email, limit: 1 });
-    const phoneField = phone ? { phone } : {};
+    const phoneField = plan === 'standard' ? { phone: phone ?? '' } : (phone ? { phone } : {});
     const customer = customers.data.length > 0
       ? await stripe.customers.update(customers.data[0].id, { ...phoneField })
       : await stripe.customers.create({ email, ...phoneField });
