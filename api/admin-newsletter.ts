@@ -5,6 +5,7 @@ import { checkOrigin, setCorsHeaders, forbidden, handlePreflight } from '../lib/
 import { getNewsletterSignedUploadUrl, allNewsletterFilesExist } from '../lib/gcs';
 import { listNewsletterContacts, sendNewsletterBatch } from '../lib/resend';
 import { type Lang, VALID_LANGS, API_URL } from '../lib/config';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
@@ -50,15 +51,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const action = req.body?.action;
 
+  devLog('admin-newsletter: action:', action);
+
   if (action === 'prepare') {
     try {
       const newsletterId = new Date().toISOString().slice(0, 10);
+      devLog('admin-newsletter: prepare newsletterId:', newsletterId);
 
       const uploadEntries = await Promise.all(
         VALID_LANGS.map(async lang => [lang, await getNewsletterSignedUploadUrl(newsletterId, lang)])
       );
       const upload_urls = Object.fromEntries(uploadEntries);
 
+      devLog('admin-newsletter: upload urls generated');
       return res.status(200).json({ newsletter_id: newsletterId, upload_urls });
     } catch (err) {
       console.error('[admin-newsletter] prepare error:', err);
@@ -87,6 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[admin-newsletter] sample payload:', JSON.stringify(payloads[0], null, 2));
 
       await sendInChunks(payloads);
+      devLog('admin-newsletter: send complete, sent:', payloads.length);
 
       return res.status(200).json({ ok: true, sent: payloads.length });
     } catch (err) {

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getActiveSubscription, toStripeLocale, PREMIUM_PRICE_IDS, VALID_BILLINGS, type Billing, type MarketingConsent } from '../lib/stripe';
 import { confirmLimiter, checkRateLimit, redis } from '../lib/ratelimit';
 import { SITE_URL, type Lang } from '../lib/config';
+import { devLog } from '../lib/logger';
 
 interface PremiumTokenPayload {
   email: string;
@@ -23,13 +24,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!token || !billing) return res.redirect(`${SITE_URL}/status?type=500`);
 
+  devLog('redeem-premium-session: token:', token, 'billing:', billing);
+
   try {
     const payload = await redis.get<PremiumTokenPayload>(`premium_token:${token}`);
+    devLog('redeem-premium-session: payload email:', payload?.email ?? 'not found');
     if (!payload) return res.redirect(`${SITE_URL}/status?type=token-invalid-premium-checkout`);
 
     await redis.del(`premium_token:${token}`);
 
     const existing = await getActiveSubscription(payload.email);
+    devLog('redeem-premium-session: existing subscription:', existing != null);
     if (existing) return res.redirect(`${SITE_URL}/status?type=500`);
 
     const customers = await stripe.customers.list({ email: payload.email, limit: 1 });
@@ -37,6 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const customer = customers.data.length > 0
       ? await stripe.customers.update(customers.data[0].id, { name: payload.name, ...phoneField })
       : await stripe.customers.create({ email: payload.email, name: payload.name, ...phoneField });
+    devLog('redeem-premium-session: customer id:', customer.id);
 
     const marketing_consent: MarketingConsent = payload.marketing_consent ? 'true' : 'false';
     const contactMetadata = {
@@ -62,6 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success_url: `${SITE_URL}${langPrefix}/status?type=subscription-success`,
       cancel_url: `${SITE_URL}${langPrefix}`,
     });
+    devLog('redeem-premium-session: checkout session created, redirecting to:', session.url);
 
     return res.redirect(session.url!);
   } catch (err) {

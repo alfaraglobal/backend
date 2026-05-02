@@ -5,6 +5,7 @@ import { confirmLimiter, studentLimiter, checkRateLimit, redis } from '../lib/ra
 import { appendStudentRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang, ACCOMMODATION_TYPES, type AccommodationType, LOCATION_PREFERENCES, type LocationPreference, HOME_VIBES, type HomeVibe, DAILY_RHYTHMS, type DailyRhythm } from '../lib/config';
 import { normalizePhone } from '../lib/validation';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
@@ -50,7 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ name: 'Dev User', email: 'dev@localhost' });
     }
 
+    devLog('student-form GET: token:', token);
     const payload = await redis.get<{ name: string; email: string; phone?: string }>(`premium_form_token:${token}`);
+    devLog('student-form GET: payload email:', payload?.email ?? 'not found');
     if (!payload) return res.status(404).end();
 
     return res.status(200).json({ name: payload.name, email: payload.email, ...(payload.phone ? { phone: payload.phone } : {}) });
@@ -168,17 +171,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // — Token validation —
 
+    devLog('student-form POST: email:', email, 'lang:', lang);
+
     const formToken = typeof b.formToken === 'string' ? b.formToken : null;
     if (!formToken) return res.status(403).json({ error: 'forbidden' });
 
     const tokenPayload = await redis.get<{ name: string; email: string; phone?: string }>(`premium_form_token:${formToken}`);
+    devLog('student-form POST: tokenPayload email:', tokenPayload?.email ?? 'not found', 'emailMatch:', tokenPayload?.email === email);
     if (!tokenPayload || tokenPayload.email !== email) return res.status(403).json({ error: 'forbidden' });
     if (tokenPayload.phone && payload.phone !== tokenPayload.phone) return res.status(403).json({ error: 'forbidden' });
 
     // — Append —
 
     try {
+      devLog('student-form POST: appending row for:', email);
       await appendStudentRow(formToken, payload);
+      devLog('student-form POST: row appended');
     } catch (err) {
       console.error('[student-form] append failed:', err);
       return res.status(500).json({ error: 'server-error' });

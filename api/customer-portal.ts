@@ -5,6 +5,7 @@ import { portalLimiter, checkRateLimit, hashEmail, isOnCooldown, setCooldown } f
 import { stripe, getActiveSubscription, toStripeLocale, STRIPE_PREMIUM_PRODUCT_ID, STRIPE_PORTAL_CONFIG_DEFAULT_ID, STRIPE_PORTAL_CONFIG_PREMIUM_ID } from '../lib/stripe';
 import { sendCustomerPortalEmail } from '../lib/resend';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
@@ -31,16 +32,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawLang = req.body?.lang;
   const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
 
-  if (await isOnCooldown(`portal:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
+  devLog('customer-portal: email:', email, 'lang:', lang);
+
+  if (await isOnCooldown(`portal:cooldown:${hashEmail(email)}`)) {
+    devLog('customer-portal: on cooldown, returning ok');
+    return res.status(200).json({ ok: true });
+  }
 
   try {
     const subscription = await getActiveSubscription(email);
+    devLog('customer-portal: subscription found:', subscription != null);
 
     if (!subscription) return res.status(200).json({ ok: true });
 
     const productId = subscription.items.data[0]?.price.product;
     const hasPremium = productId === STRIPE_PREMIUM_PRODUCT_ID;
     const configuration = hasPremium ? STRIPE_PORTAL_CONFIG_PREMIUM_ID : STRIPE_PORTAL_CONFIG_DEFAULT_ID;
+    devLog('customer-portal: hasPremium:', hasPremium, 'configuration:', configuration);
 
     const customer = subscription.customer as string;
 
@@ -50,8 +58,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return_url: SITE_URL,
       locale: toStripeLocale(lang),
     });
+    devLog('customer-portal: portal session created:', session.url);
 
     await sendCustomerPortalEmail(email, lang, session.url, hasPremium);
+    devLog('customer-portal: email sent');
     await setCooldown(`portal:cooldown:${hashEmail(email)}`, 60 * 10);
 
     return res.status(200).json({ ok: true });

@@ -8,6 +8,7 @@ import { uploadVerificationDoc } from '../lib/gcs';
 import { appendCeuVerificationRow } from '../lib/sheets';
 import { VALID_LANGS, type Lang } from '../lib/config';
 import { normalizePhone } from '../lib/validation';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: false } };
 
@@ -140,9 +141,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fileName = `${Date.now()}_${randomUUID()}.${ext}`;
 
   try {
+    devLog('uploading to GCS:', fileName);
     const { url: documentUrl, expiry: documentUrlExpiry, authenticatedUrl } = await uploadVerificationDoc(fileName, form.fileMimeType, form.fileBuffer!);
+    devLog('GCS upload done, documentUrl:', documentUrl);
+    devLog('appending to sheets:', { email: form.email, lang, fileName });
     await appendCeuVerificationRow({ email: form.email, lang, documentUrl, documentUrlExpiry, fileName, authenticatedUrl, marketing_consent: form.marketing_consent, ...(form.phone ? { phone: form.phone } : {}) });
+    devLog('sheets append done');
     await setCooldown(cooldownKey, 60 * 60 * 24); // 24 hours
+    devLog('cooldown set');
   } catch (err) {
     console.error('[ceu-verification] error:', err);
     return res.status(500).json({ error: 'server-error' });
