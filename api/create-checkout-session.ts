@@ -58,12 +58,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     devLog('create-checkout-session: existing subscription:', existing != null);
     if (existing) return res.status(200).json({ ok: false, error: 'already-subscribed' });
 
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    const phoneField = phone ? { phone } : {};
+    const customer = customers.data.length > 0
+      ? await stripe.customers.update(customers.data[0].id, { ...phoneField })
+      : await stripe.customers.create({ email, ...phoneField });
+    devLog('create-checkout-session: customer id:', customer.id);
+
     const contactMetadata = { language: lang, marketing_consent, ...(phone ? { phone } : {}) };
     const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      customer_email: email,
+      customer: customer.id,
+      customer_update: { address: 'auto', name: 'auto' },
       locale: toStripeLocale(lang),
       line_items: [{ price: getPriceId(plan, billing), quantity: 1 }],
       metadata: contactMetadata,
