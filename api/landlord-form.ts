@@ -7,6 +7,7 @@ import { sendLandlordConfirmationEmail, type LandlordPayload } from '../lib/rese
 import { SITE_URL, VALID_LANGS, type Lang, RENTAL_TYPES, type RentalType } from '../lib/config';
 import { appendLandlordRow } from '../lib/sheets';
 import { normalizePhone } from '../lib/validation';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 
@@ -27,12 +28,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (typeof token !== 'string')
       return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-form-landlord`);
 
+    devLog('landlord-form GET: token:', token);
     const payload = await redis.get<LandlordPayload>(`ll:pending:${token}`);
+    devLog('landlord-form GET: payload email:', payload?.email ?? 'not found');
     if (!payload)
       return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=token-invalid-form-landlord`);
 
     try {
+      devLog('landlord-form GET: appending row for:', payload.email);
       await appendLandlordRow(token, payload);
+      devLog('landlord-form GET: row appended');
     } catch (err) {
       console.error('[landlord-form] appendLandlordRow failed:', err);
       return res.redirect(302, `${SITE_URL}${fallbackPrefix}/status?type=500`);
@@ -104,11 +109,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (Object.keys(errors).length > 0)
       return res.status(400).json({ ok: false, errors });
 
+    devLog('landlord-form POST: email:', email);
     const alreadyConfirmed = await redis.get(`ll:confirmed:${hashEmail(email)}`);
+    devLog('landlord-form POST: alreadyConfirmed:', alreadyConfirmed != null);
     if (alreadyConfirmed) return res.status(200).json({ ok: true });
 
     const rawLang = req.body?.lang;
     const lang: Lang = VALID_LANGS.includes(rawLang) ? rawLang : 'en';
+    devLog('landlord-form POST: lang:', lang);
 
     const payload = {
       name: b.name.trim(),
@@ -124,14 +132,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       marketing_consent: b.marketing_consent === true,
     };
 
-    if (await isOnCooldown(`ll:cooldown:${hashEmail(email)}`)) return res.status(200).json({ ok: true });
+    if (await isOnCooldown(`ll:cooldown:${hashEmail(email)}`)) {
+      devLog('landlord-form POST: on cooldown, returning ok');
+      return res.status(200).json({ ok: true });
+    }
 
     const token = randomUUID();
     await redis.set(`ll:pending:${token}`, payload, { ex: TOKEN_TTL_SECONDS });
     await setCooldown(`ll:cooldown:${hashEmail(email)}`, EMAIL_COOLDOWN_SECONDS);
+    devLog('landlord-form POST: token created:', token);
 
     try {
       await sendLandlordConfirmationEmail(email, lang, token, payload);
+      devLog('landlord-form POST: confirmation email sent');
     } catch (err) {
       console.error('[landlord-form] email send failed:', err);
       await redis.del(`ll:pending:${token}`);

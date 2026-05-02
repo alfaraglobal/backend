@@ -6,6 +6,7 @@ import { stripe, getPlanFromProductId } from '../lib/stripe';
 import { removeNewsletterContact } from '../lib/resend';
 import { newsletterLimiter, checkRateLimit } from '../lib/ratelimit';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: false } };
 
@@ -31,10 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!VALID_LANGS.includes(lang as Lang)) return res.status(400).end('Bad Request');
 
     const decodedEmail = decodeURIComponent(email);
+    devLog('newsletter download: id:', id, 'lang:', lang, 'email:', decodedEmail);
     if (!verifyHmac(secret, `dl:${decodedEmail}:${id}`, token)) return res.status(403).end('Forbidden');
 
     try {
       const url = await getNewsletterSignedDownloadUrl(id, lang as Lang);
+      devLog('newsletter download: signed url generated, redirecting');
       return res.redirect(302, url);
     } catch (err) {
       console.error('[newsletter] download error:', err);
@@ -46,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!email || !token) return res.status(400).end('Bad Request');
 
     const decodedEmail = decodeURIComponent(email);
+    devLog('newsletter unsubscribe: email:', decodedEmail);
     if (!isEmail(decodedEmail)) return res.status(400).end('Bad Request');
     if (!verifyHmac(secret, `unsub:${decodedEmail}`, token)) return res.status(403).end('Forbidden');
 
@@ -80,6 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       await removeNewsletterContact(decodedEmail);
+      devLog('newsletter unsubscribe: resend contact removed');
     } catch (err) {
       console.error('[newsletter] remove resend error:', err);
     }

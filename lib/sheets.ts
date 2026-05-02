@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { devLog } from './logger';
 
 const auth = new google.auth.GoogleAuth({
   credentials: {
@@ -89,10 +90,14 @@ export async function appendCeuVerificationRow(payload: {
 }): Promise<void> {
   const sheets = google.sheets({ version: 'v4', auth });
   const timestamp = new Date().toISOString();
+  const spreadsheetId = process.env.GOOGLE_SHEETS_CEU_VERIFICATION_ID!;
+  const range = `${process.env.GOOGLE_SHEETS_CEU_VERIFICATION_TAB!}!A:A`;
 
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: process.env.GOOGLE_SHEETS_CEU_VERIFICATION_ID!,
-    range: `${process.env.GOOGLE_SHEETS_CEU_VERIFICATION_TAB!}!A:A`,
+  devLog('sheets.appendCeuVerificationRow spreadsheetId:', spreadsheetId, 'range:', range);
+
+  const response = await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range,
     valueInputOption: 'RAW',
     requestBody: {
       values: [[
@@ -109,6 +114,8 @@ export async function appendCeuVerificationRow(payload: {
       ]],
     },
   });
+
+  devLog('sheets.append response status:', response.status, 'updatedRange:', response.data.updates?.updatedRange, 'updatedRows:', response.data.updates?.updatedRows);
 }
 
 export async function appendLandlordRow(token: string, payload: {

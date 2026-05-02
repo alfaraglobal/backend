@@ -5,6 +5,7 @@ import { checkoutLimiter, checkRateLimit } from '../lib/ratelimit';
 import { stripe, getActiveSubscription, getPriceId, toStripeLocale, VALID_PLANS, VALID_BILLINGS, type Plan, type Billing, type MarketingConsent } from '../lib/stripe';
 import { VALID_LANGS, SITE_URL, type Lang } from '../lib/config';
 import { normalizePhone } from '../lib/validation';
+import { devLog } from '../lib/logger';
 
 export const config = { api: { bodyParser: { sizeLimit: '1kb' } } };
 
@@ -50,8 +51,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (typeof req.body?.marketing_consent !== 'boolean') return res.status(400).json({ error: 'invalid-marketing-consent' });
   const marketing_consent: MarketingConsent = req.body.marketing_consent ? 'true' : 'false';
 
+  devLog('create-checkout-session: email:', email, 'plan:', plan, 'billing:', billing, 'lang:', lang);
+
   try {
     const existing = await getActiveSubscription(email);
+    devLog('create-checkout-session: existing subscription:', existing != null);
     if (existing) return res.status(200).json({ ok: false, error: 'already-subscribed' });
 
     const contactMetadata = { language: lang, marketing_consent, ...(phone ? { phone } : {}) };
@@ -73,6 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cancel_url: `${SITE_URL}${langPrefix}/community/checkout-${plan}?billing=${billing}`,
     });
 
+    devLog('create-checkout-session: session created:', session.url);
     return res.status(200).json({ ok: true, url: session.url });
   } catch (err) {
     console.error('[create-checkout-session] error:', err);
