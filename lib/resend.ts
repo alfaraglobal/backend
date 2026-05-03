@@ -212,11 +212,17 @@ const WELCOME_TEMPLATE_ID: Record<SubscriptionPlan, Record<Lang, string>> = {
 
 export async function sendWelcomeEmail(email: string, lang: Lang, plan: SubscriptionPlan): Promise<void> {
   const langPrefix = lang === 'en' ? '' : `/${lang}`;
+  const variables: Record<string, string> | undefined =
+    plan === 'premium'
+      ? { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription`, WHATSAPP_COMMUNITY: process.env.WHATSAPP_COMMUNITY!, WHATSAPP_STUDENTS: process.env.WHATSAPP_STUDENTS! }
+      : plan === 'standard'
+      ? { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription`, WHATSAPP_COMMUNITY: process.env.WHATSAPP_COMMUNITY! }
+      : undefined;
   await sendEmail('sendWelcomeEmail', {
     to: email,
     template: {
       id: WELCOME_TEMPLATE_ID[plan][lang],
-      ...(plan === 'standard' || plan === 'premium' ? { variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription` } } : {}),
+      ...(variables ? { variables } : {}),
     },
   });
 }
@@ -234,7 +240,7 @@ export async function sendUpdateFromBasicToStandardEmail(email: string, lang: La
     to: email,
     template: {
       id: UPDATE_FROM_BASIC_TO_STANDARD_TEMPLATE_ID[lang],
-      variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription` },
+      variables: { PORTAL_REQUEST_URL: `${SITE_URL}${langPrefix}/community/manage-subscription`, WHATSAPP_COMMUNITY: process.env.WHATSAPP_COMMUNITY! },
     },
   });
 }
