@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe, getPlanFromProductId, type PaymentStatus, type WhatsappStatus, type WhatsappRemoval, type WhatsappNumberOutdated, type MarketingConsent } from '../lib/stripe';
-import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, sendPhoneNumberCompleteEmail, addNewsletterContact, removeNewsletterContact } from '../lib/resend';
+import { sendWelcomeEmail, sendUpdateFromBasicToStandardEmail, sendUpdateFromStandardToBasicEmail, addNewsletterContact, removeNewsletterContact } from '../lib/resend';
 import { VALID_LANGS, type Lang } from '../lib/config';
 import { devLog } from '../lib/logger';
 
@@ -209,27 +209,8 @@ async function onSubscriptionUpdated(subscription: SubscriptionUpdated, previous
 async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: CustomerUpdatedData['previous_attributes']) {
   if (!previousAttributes) return;
 
-  const emailChanged = 'email' in previousAttributes && previousAttributes.email != null && previousAttributes.email !== customer.email;
   const phoneChanged = 'phone' in previousAttributes;
-  devLog('onCustomerUpdated: customerId:', customer.id, 'emailChanged:', emailChanged, 'phoneChanged:', phoneChanged);
-  if (!emailChanged && !phoneChanged) return;
-
-  if (emailChanged && customer.email) {
-    const consent = customer.metadata?.['marketing_consent'];
-    if (consent === 'true') {
-      const language = customer.metadata?.['language'] as string | undefined;
-      const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
-      try {
-        await Promise.all([
-          removeNewsletterContact(previousAttributes.email!),
-          addNewsletterContact(customer.email, lang),
-        ]);
-      } catch (err) {
-        console.error('[stripe-webhook] failed to update newsletter contact on email change:', err);
-      }
-    }
-  }
-
+  devLog('onCustomerUpdated: customerId:', customer.id, 'phoneChanged:', phoneChanged);
   if (!phoneChanged) return;
 
   const previousPhone = previousAttributes.phone ?? null;
@@ -250,10 +231,6 @@ async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: 
   const plan = getPlanFromProductId(sub.items.data[0]?.price.product as string);
   if (plan !== 'standard' && plan !== 'premium') return;
 
-  const language = customer.metadata?.['language'] as string | undefined;
-  const lang: Lang = VALID_LANGS.includes(language as Lang) ? language as Lang : 'en';
-  const email = customer.email ?? undefined;
-
   if (!previousPhone) {
     // First-time phone addition via portal — guard against checkout-triggered updates
     const existingWhatsappNumber = customer.metadata?.['whatsapp_number'];
@@ -271,13 +248,6 @@ async function onCustomerUpdated(customer: CustomerUpdated, previousAttributes: 
       throw err;
     }
 
-    if (email) {
-      try {
-        await sendPhoneNumberCompleteEmail(email, lang);
-      } catch (err) {
-        console.error('[stripe-webhook] failed to send phone number complete email:', err);
-      }
-    }
   } else {
     // Phone changed — flag for manual review
     try {
