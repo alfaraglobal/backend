@@ -27,20 +27,6 @@ async function appendRow(tab: string, token: string, values: (string | number | 
   });
 }
 
-export async function appendWaitlistRow(email: string): Promise<void> {
-  const sheets = google.sheets({ version: 'v4', auth });
-  const timestamp = new Date().toISOString();
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: process.env.GOOGLE_SHEETS_WAITLIST_ID!,
-    range: `${process.env.GOOGLE_SHEETS_WAITLIST_TAB!}!A:A`,
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: [[timestamp, email]],
-    },
-  });
-}
-
 export async function appendStudentRow(token: string, payload: {
   lang: string;
   name: string;
