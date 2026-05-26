@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       subscription_data: {
         metadata: contactMetadata,
       },
+      allow_promotion_codes: true,
       consent_collection: { terms_of_service: 'required' },
       automatic_tax: { enabled: true },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
